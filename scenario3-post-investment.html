@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>律豆投资管理智能体 · 场景三 投后管理</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@500;600;700&family=Noto+Sans+SC:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+/* ===========================================
+   FIXED 16:9 STAGE: MANDATORY BASE STYLES
+   =========================================== */
+html,body{width:100%;height:100%;margin:0;overflow:hidden;background:var(--stage-bg,#0c1f33)}
+.deck-viewport{position:fixed;inset:0;overflow:hidden;background:var(--stage-bg,#0c1f33)}
+.deck-stage{position:absolute;left:0;top:0;width:1920px;height:1080px;overflow:hidden;transform-origin:0 0;background:var(--slide-bg,#f5f7fa)}
+.slide{position:absolute;inset:0;width:1920px;height:1080px;overflow:hidden;display:block;visibility:hidden;opacity:0;pointer-events:none;background:var(--slide-bg,#f5f7fa)}
+.slide.active,.slide.visible{visibility:visible;opacity:1;pointer-events:auto;z-index:1}
+img,video,canvas,svg{max-width:100%;max-height:100%}
+.deck-controls{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:1000}
+@media print{html,body{width:1920px;height:auto;overflow:visible;background:#fff}.deck-viewport{position:static;overflow:visible;background:#fff}.deck-stage{position:static;width:auto;height:auto;transform:none!important;background:none}.slide{position:relative;display:block!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important;width:1920px;height:1080px;break-after:page;page-break-after:always}.slide:last-child{break-after:auto;page-break-after:auto}.deck-controls{display:none!important}}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.2s!important}}
+
+/* ===========================================
+   THEME — 法律产品 · 藏青 × 砖红 × 米白
+   =========================================== */
+:root{
+  --navy:#1f3a5f; --navy-2:#2e5a88; --navy-deep:#13283f;
+  --brick:#c0392b; --brick-soft:#e8554420;
+  --green:#1e6b3a; --green-soft:#e7f3ec;
+  --gold:#b8893a;
+  --paper:#f5f7fa; --paper-2:#eef1f6; --card:#ffffff;
+  --ink:#1c2b3a; --ink-2:#4a5a6e; --ink-3:#8696a8;
+  --line:#d8e0ea; --line-2:#c2cdda;
+  --redline:#99333320;
+  --font-serif:'Noto Serif SC',serif;
+  --font-sans:'Noto Sans SC',sans-serif;
+  --stage-bg:#0c1f33; --slide-bg:#f5f7fa;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+.slide{font-family:var(--font-sans);color:var(--ink)}
+
+/* paper texture bg */
+.slide{background:
+  radial-gradient(1200px 700px at 88% -10%,rgba(46,90,136,.06),transparent 60%),
+  radial-gradient(900px 600px at -5% 110%,rgba(192,57,43,.05),transparent 55%),
+  var(--paper);}
+
+/* 通用排版 */
+.pad{position:absolute;inset:0;padding:90px 110px}
+.kicker{display:inline-flex;align-items:center;gap:12px;font-size:17px;letter-spacing:.14em;color:var(--navy-2);font-weight:700}
+.kicker .bar{width:38px;height:3px;background:var(--brick);border-radius:2px}
+.kicker .tag{font-size:14px;letter-spacing:.1em;color:#fff;background:var(--brick);padding:3px 11px;border-radius:4px;font-weight:700}
+.s-title{font-family:var(--font-serif);font-weight:700;color:var(--navy);line-height:1.12}
+.s-sub{color:var(--ink-2);font-size:21px;line-height:1.7}
+.foot{position:absolute;left:110px;bottom:46px;font-size:15px;color:var(--ink-3);letter-spacing:.04em}
+.foot b{color:var(--navy-2)}
+.pageno{position:absolute;right:110px;bottom:46px;font-size:15px;color:var(--ink-3);font-variant-numeric:tabular-nums}
+
+/* reveal anim */
+.reveal{opacity:0;transform:translateY(26px);transition:opacity .7s cubic-bezier(.2,.7,.2,1),transform .7s cubic-bezier(.2,.7,.2,1)}
+.slide.active .reveal{opacity:1;transform:none}
+.slide.active .reveal.d1{transition-delay:.12s}
+.slide.active .reveal.d2{transition-delay:.24s}
+.slide.active .reveal.d3{transition-delay:.36s}
+.slide.active .reveal.d4{transition-delay:.48s}
+.slide.active .reveal.d5{transition-delay:.6s}
+.slide.active .reveal.d6{transition-delay:.72s}
+
+/* ===== COVER ===== */
+#s1{background:
+  radial-gradient(1400px 900px at 78% 20%,rgba(46,90,136,.5),transparent 60%),
+  linear-gradient(135deg,#13283f 0%,#1f3a5f 55%,#244873 100%);}
+#s1 .pad{padding:0 130px;display:flex;flex-direction:column;justify-content:center}
+#s1 .badge{display:inline-flex;align-items:center;gap:14px;font-size:18px;letter-spacing:.12em;color:#bcd0e8;border:1px solid rgba(188,208,232,.35);border-radius:999px;padding:11px 24px;width:max-content}
+#s1 .badge .dot{width:9px;height:9px;border-radius:50%;background:var(--brick);box-shadow:0 0 14px var(--brick)}
+#s1 h1{font-family:var(--font-serif);font-weight:700;color:#fff;font-size:92px;line-height:1.1;margin-top:42px;letter-spacing:.01em}
+#s1 h1 .hl{color:#ffd27a}
+#s1 .lead{color:#cdddf0;font-size:27px;line-height:1.7;margin-top:36px;max-width:1180px}
+#s1 .lead b{color:#fff}
+#s1 .metaRow{display:flex;gap:18px;margin-top:54px;flex-wrap:wrap}
+#s1 .meta{font-size:18px;color:#d4e2f2;border:1px solid rgba(188,208,232,.3);border-radius:10px;padding:14px 22px;background:rgba(255,255,255,.05)}
+#s1 .meta b{color:#ffd27a;font-weight:700}
+#s1 .sig{position:absolute;right:130px;bottom:60px;font-size:17px;color:#8fabce;letter-spacing:.06em;text-align:right}
+
+/* ===== 通用卡片 ===== */
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:0 10px 34px -18px rgba(31,58,95,.32)}
+
+/* ===== S2 引子 — 两类事 ===== */
+#s2 .twoCol{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:54px}
+#s2 .bigcard{padding:46px 46px 40px;position:relative;overflow:hidden}
+#s2 .bigcard::before{content:"";position:absolute;left:0;top:0;bottom:0;width:7px}
+#s2 .c-self::before{background:var(--brick)}
+#s2 .c-pf::before{background:var(--navy-2)}
+#s2 .bigcard .ic{font-size:15px;letter-spacing:.16em;font-weight:700;color:#fff;padding:5px 14px;border-radius:6px;width:max-content}
+#s2 .c-self .ic{background:var(--brick)}
+#s2 .c-pf .ic{background:var(--navy-2)}
+#s2 .bigcard h3{font-family:var(--font-serif);font-size:36px;color:var(--navy);margin-top:22px;line-height:1.3}
+#s2 .bigcard p{font-size:20px;color:var(--ink-2);line-height:1.75;margin-top:18px}
+#s2 .bigcard .li{display:flex;gap:13px;align-items:baseline;margin-top:16px;font-size:19px;color:var(--ink)}
+#s2 .bigcard .li .b{color:var(--brick);font-weight:900;flex-shrink:0}
+#s2 .c-pf .li .b{color:var(--navy-2)}
+#s2 .punch{margin-top:48px;font-family:var(--font-serif);font-size:30px;color:var(--navy);text-align:center;line-height:1.6}
+#s2 .punch .em{color:var(--brick);font-weight:700}
+
+/* ===== S3 六类盯防对象（新增） ===== */
+#s3 .grid6t{display:grid;grid-template-columns:repeat(3,1fr);gap:28px;margin-top:46px}
+#s3 .obj{background:#fff;border:1px solid var(--line);border-radius:16px;padding:30px 30px 28px;position:relative;overflow:hidden;box-shadow:0 10px 30px -18px rgba(31,58,95,.3)}
+#s3 .obj::before{content:"";position:absolute;left:0;top:0;width:6px;height:100%}
+#s3 .obj.self::before{background:var(--brick)}
+#s3 .obj.pf::before{background:var(--navy-2)}
+#s3 .obj .top{display:flex;align-items:center;gap:14px}
+#s3 .obj .no{font-family:var(--font-serif);font-size:34px;font-weight:700;color:var(--line-2);line-height:1}
+#s3 .obj .cat{font-size:13px;font-weight:700;letter-spacing:.1em;color:#fff;padding:4px 11px;border-radius:5px}
+#s3 .obj.self .cat{background:var(--brick)}
+#s3 .obj.pf .cat{background:var(--navy-2)}
+#s3 .obj h4{font-size:24px;color:var(--navy);margin-top:14px;font-weight:700;line-height:1.3}
+#s3 .obj p{font-size:16px;color:var(--ink-2);line-height:1.6;margin-top:12px}
+#s3 .obj p b{color:var(--brick);font-weight:700}
+#s3 .legendc{display:flex;gap:34px;margin-top:36px;justify-content:center;font-size:17px;color:var(--ink-2)}
+#s3 .legendc .lg{display:flex;align-items:center;gap:10px}
+#s3 .legendc .sw{width:16px;height:16px;border-radius:4px}
+
+/* ===== S4 巡检主线 — 节点流 ===== */
+#s4 .flow{display:grid;grid-template-columns:260px 1fr;gap:0;margin-top:44px}
+#s4 .steps{position:relative;padding-right:30px}
+#s4 .steps::before{content:"";position:absolute;left:21px;top:18px;bottom:18px;width:3px;background:linear-gradient(180deg,var(--brick),var(--navy-2))}
+#s4 .step{position:relative;padding:0 0 38px 60px}
+#s4 .step:last-child{padding-bottom:0}
+#s4 .step .node{position:absolute;left:9px;top:2px;width:26px;height:26px;border-radius:50%;background:#fff;border:4px solid var(--navy-2);box-shadow:0 0 0 4px var(--paper)}
+#s4 .step.hot .node{border-color:var(--brick)}
+#s4 .step .t{font-weight:700;font-size:20px;color:var(--navy)}
+#s4 .step .d{font-size:16px;color:var(--ink-3);margin-top:5px;line-height:1.5}
+#s4 .panel{padding:34px 40px}
+#s4 .panel h3{font-family:var(--font-serif);font-size:26px;color:var(--navy);display:flex;align-items:center;gap:14px}
+#s4 .panel h3 .pill{font-size:14px;font-weight:700;color:#fff;background:var(--brick);padding:4px 12px;border-radius:999px}
+#s4 .finds{margin-top:22px;display:grid;gap:14px}
+#s4 .find{display:grid;grid-template-columns:auto 1fr auto;gap:18px;align-items:center;padding:16px 20px;border-radius:12px;background:var(--paper-2);border-left:5px solid var(--navy-2)}
+#s4 .find.red{border-left-color:var(--brick);background:#fbeceb}
+#s4 .find .lv{font-size:13px;font-weight:900;letter-spacing:.06em;color:#fff;background:var(--navy-2);padding:5px 11px;border-radius:6px;white-space:nowrap}
+#s4 .find.red .lv{background:var(--brick)}
+#s4 .find .txt{font-size:18px;color:var(--ink);line-height:1.45}
+#s4 .find .txt b{color:var(--navy)}
+#s4 .find .due{font-size:16px;font-weight:700;color:var(--brick);white-space:nowrap;font-variant-numeric:tabular-nums}
+
+/* ===== S5 风险全景表 ===== */
+#s5 table{width:100%;border-collapse:separate;border-spacing:0;margin-top:40px;font-size:18px;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 12px 38px -20px rgba(31,58,95,.4)}
+#s5 thead th{background:var(--navy);color:#fff;font-weight:700;text-align:left;padding:20px 22px;font-size:18px;letter-spacing:.03em}
+#s5 tbody td{padding:18px 22px;border-bottom:1px solid var(--line);color:var(--ink-2);line-height:1.5;vertical-align:top}
+#s5 tbody tr:last-child td{border-bottom:none}
+#s5 tbody td:first-child{font-weight:700;color:var(--navy);width:300px}
+#s5 tbody td.due{color:var(--brick);font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums}
+#s5 tbody tr.r1 td:first-child{box-shadow:inset 5px 0 0 var(--brick)}
+#s5 tbody tr:nth-child(even){background:var(--paper-2)}
+#s5 .note{margin-top:30px;font-size:19px;color:var(--ink-2);line-height:1.7;border-left:4px solid var(--navy-2);padding-left:22px}
+#s5 .note b{color:var(--navy)}
+
+/* ===== S6 第一类深挖 主体合规义务（新增） ===== */
+#s6 .layout{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:40px}
+#s6 .subj table{width:100%;border-collapse:separate;border-spacing:0;font-size:17px;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 10px 30px -20px rgba(31,58,95,.35)}
+#s6 .subj thead th{background:var(--brick);color:#fff;font-weight:700;text-align:left;padding:15px 18px;font-size:16px}
+#s6 .subj tbody td{padding:14px 18px;border-bottom:1px solid var(--line);color:var(--ink-2);line-height:1.45;vertical-align:top}
+#s6 .subj tbody tr:last-child td{border-bottom:none}
+#s6 .subj tbody td:first-child{font-weight:700;color:var(--navy)}
+#s6 .subj tbody td.due{color:var(--brick);font-weight:700;white-space:nowrap}
+#s6 .subj tbody tr:nth-child(even){background:var(--paper-2)}
+#s6 .why{display:flex;flex-direction:column;gap:22px}
+#s6 .whycard{background:#fff;border:1px solid var(--line);border-radius:14px;padding:26px 30px;border-left:6px solid var(--brick);box-shadow:0 10px 30px -20px rgba(31,58,95,.3)}
+#s6 .whycard h4{font-size:22px;color:var(--navy);font-weight:700;display:flex;align-items:center;gap:12px}
+#s6 .whycard h4 .ico{width:34px;height:34px;border-radius:8px;background:var(--brick-soft);color:var(--brick);display:flex;align-items:center;justify-content:center;font-size:19px;font-weight:900}
+#s6 .whycard p{font-size:17px;color:var(--ink-2);line-height:1.7;margin-top:12px}
+#s6 .whycard p b{color:var(--brick);font-weight:700}
+#s6 .whycard.nav{border-left-color:var(--navy-2)}
+#s6 .whycard.nav h4 .ico{background:#2e5a8820;color:var(--navy-2)}
+#s6 .whycard.nav p b{color:var(--navy-2)}
+
+/* ===== S7 第二类深挖 关键时点（新增） ===== */
+#s7 .gates{display:grid;grid-template-columns:repeat(3,1fr);gap:28px;margin-top:42px}
+#s7 .gate{background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:0 12px 34px -20px rgba(31,58,95,.36);display:flex;flex-direction:column}
+#s7 .gate .gh{padding:22px 26px;color:#fff;position:relative}
+#s7 .gate.g1 .gh{background:linear-gradient(135deg,#1e6b3a,#2a8a4d)}
+#s7 .gate.g2 .gh{background:linear-gradient(135deg,#b8893a,#cfa052)}
+#s7 .gate.g3 .gh{background:linear-gradient(135deg,#1f3a5f,#2e5a88)}
+#s7 .gate .gh .co{font-size:14px;letter-spacing:.1em;font-weight:700;opacity:.92}
+#s7 .gate .gh .nm{font-family:var(--font-serif);font-size:27px;font-weight:700;margin-top:8px;line-height:1.25}
+#s7 .gate .gb{padding:24px 26px;display:flex;flex-direction:column;gap:16px;flex:1}
+#s7 .gate .row{display:flex;gap:12px;align-items:baseline}
+#s7 .gate .row .k{font-size:13px;font-weight:700;color:var(--ink-3);letter-spacing:.06em;min-width:62px;flex-shrink:0}
+#s7 .gate .row .v{font-size:16px;color:var(--ink);line-height:1.5}
+#s7 .gate .row .v b{color:var(--brick);font-weight:700}
+#s7 .gate .csq{margin-top:auto;background:#fbeceb;border-radius:10px;padding:14px 16px;font-size:15px;color:var(--brick);line-height:1.5;font-weight:700}
+#s7 .lead7{margin-top:34px;font-size:19px;color:var(--ink-2);line-height:1.7;text-align:center}
+#s7 .lead7 b{color:var(--navy)}
+
+/* ===== S8 90天时间轴 ===== */
+#s8 .axis{position:relative;margin-top:80px;height:430px}
+#s8 .axisLine{position:absolute;left:60px;right:60px;top:90px;height:4px;background:linear-gradient(90deg,var(--green),var(--gold),var(--brick))}
+#s8 .axisLine .fill{position:absolute;left:0;top:0;bottom:0;width:0;background:#fff5;transition:width 1.4s ease .3s}
+#s8 .tk{position:absolute;top:90px;transform:translate(-50%,-50%);width:22px;height:22px;border-radius:50%;background:#fff;border:5px solid var(--navy-2);z-index:3}
+#s8 .tk.red{border-color:var(--brick)}
+#s8 .tk.green{border-color:var(--green)}
+#s8 .tk.gold{border-color:var(--gold)}
+#s8 .ev{position:absolute;width:230px;opacity:0;transform:translateY(18px);transition:.6s}
+#s8 .slide.active .ev,.slide.active #s8 .ev{opacity:1;transform:none}
+#s8 .ev .day{font-family:var(--font-serif);font-size:30px;font-weight:700;color:var(--navy)}
+#s8 .ev .day .u{font-size:16px;color:var(--ink-3);margin-left:4px}
+#s8 .ev .lab{font-size:18px;color:var(--ink);font-weight:700;margin-top:6px;line-height:1.4}
+#s8 .ev .sub{font-size:15px;color:var(--ink-3);margin-top:5px;line-height:1.45}
+#s8 .ev.up{top:-40px}
+#s8 .ev.dn{top:130px}
+#s8 .ev .pin{position:absolute;left:24px;width:2px;background:var(--line-2)}
+#s8 .ev.up .pin{bottom:-46px;height:46px}
+#s8 .ev.dn .pin{top:-46px;height:46px}
+#s8 .legend7{display:flex;gap:30px;margin-top:30px;justify-content:center}
+#s8 .legend7 .lg{display:flex;align-items:center;gap:9px;font-size:16px;color:var(--ink-2)}
+#s8 .legend7 .sw{width:14px;height:14px;border-radius:50%;border:4px solid}
+
+/* ===== S9 第三类深挖 诉讼与监管（新增） ===== */
+#s9 .twoArea{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:42px}
+#s9 .area{background:#fff;border:1px solid var(--line);border-radius:16px;padding:34px 36px;box-shadow:0 12px 34px -20px rgba(31,58,95,.34);position:relative;overflow:hidden}
+#s9 .area::before{content:"";position:absolute;left:0;top:0;width:100%;height:6px}
+#s9 .area.lit::before{background:var(--brick)}
+#s9 .area.reg::before{background:var(--navy-2)}
+#s9 .area .ah{display:flex;align-items:center;gap:14px}
+#s9 .area .ah .tag{font-size:13px;font-weight:700;letter-spacing:.1em;color:#fff;padding:5px 13px;border-radius:6px}
+#s9 .area.lit .ah .tag{background:var(--brick)}
+#s9 .area.reg .ah .tag{background:var(--navy-2)}
+#s9 .area .ah h3{font-family:var(--font-serif);font-size:28px;color:var(--navy);font-weight:700}
+#s9 .area .case{margin-top:24px;background:var(--paper-2);border-radius:12px;padding:22px 24px}
+#s9 .area .case .ttl{font-size:20px;font-weight:700;color:var(--navy);line-height:1.4}
+#s9 .area .case .meta{font-size:16px;color:var(--ink-2);line-height:1.7;margin-top:12px}
+#s9 .area .case .meta b{color:var(--brick);font-weight:700}
+#s9 .area.reg .case .meta b{color:var(--navy-2)}
+#s9 .area .act{margin-top:22px;font-size:17px;color:var(--ink);line-height:1.65;display:flex;gap:12px;align-items:baseline}
+#s9 .area .act .arr{color:var(--green);font-weight:900;flex-shrink:0}
+#s9 .area .badge2{position:absolute;right:30px;top:26px;font-family:var(--font-serif);font-size:46px;font-weight:700;color:var(--line-2);line-height:1}
+
+/* ===== S10 Before/After 揭幕滑块 ===== */
+#s10 .baWrap{position:relative;margin-top:42px;height:560px;border-radius:18px;overflow:hidden;box-shadow:0 20px 50px -24px rgba(31,58,95,.5);border:1px solid var(--line-2)}
+#s10 .baLayer{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;padding:60px 80px}
+#s10 .baBefore{background:linear-gradient(135deg,#f0ece9,#e8ddd8)}
+#s10 .baAfter{background:linear-gradient(135deg,#173251,#214473);clip-path:inset(0 0 0 50%)}
+#s10 .baTag{font-size:18px;letter-spacing:.14em;font-weight:700;padding:8px 18px;border-radius:8px;width:max-content;margin-bottom:24px}
+#s10 .baBefore .baTag{background:#9a857a;color:#fff}
+#s10 .baAfter .baTag{background:#ffd27a;color:#13283f}
+#s10 .baBefore h3{font-family:var(--font-serif);font-size:42px;color:#7a5c4d;line-height:1.3}
+#s10 .baAfter h3{font-family:var(--font-serif);font-size:42px;color:#fff;line-height:1.3}
+#s10 .baLayer .li{display:flex;gap:14px;align-items:baseline;font-size:21px;margin-top:18px;line-height:1.5}
+#s10 .baBefore .li{color:#6b5447}
+#s10 .baAfter .li{color:#d4e2f2}
+#s10 .baBefore .li .m{color:#a04a3c;font-weight:900}
+#s10 .baAfter .li .m{color:#ffd27a;font-weight:900}
+#s10 .baHandle{position:absolute;top:0;bottom:0;left:50%;width:4px;background:#ffd27a;transform:translateX(-50%);z-index:5;cursor:ew-resize}
+#s10 .baHandle .knob{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:64px;height:64px;border-radius:50%;background:#ffd27a;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 20px rgba(0,0,0,.3);font-size:26px;color:#13283f;font-weight:900}
+#s10 .baHint{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);z-index:6;font-size:15px;color:#fff;background:rgba(19,40,63,.7);padding:8px 18px;border-radius:999px;letter-spacing:.05em;backdrop-filter:blur(4px)}
+#s10 .punch{margin-top:34px;display:grid;grid-template-columns:1fr 1fr;gap:30px}
+#s10 .punch .p{font-size:20px;line-height:1.6;padding:22px 26px;border-radius:12px}
+#s10 .punch .pb{background:#f3ece8;color:#7a5c4d;border-left:5px solid #9a857a}
+#s10 .punch .pa{background:var(--green-soft);color:var(--green);border-left:5px solid var(--green)}
+#s10 .punch .p b{font-weight:900}
+
+/* ===== S11 泳道对照 ===== */
+#s11 .lanes{margin-top:40px;display:grid;gap:18px}
+#s11 .laneHead{display:grid;grid-template-columns:230px 1fr 1fr;gap:18px;align-items:center}
+#s11 .laneHead .h{font-weight:700;font-size:19px;text-align:center;padding:14px;border-radius:10px;color:#fff}
+#s11 .laneHead .hb{background:#9a857a}
+#s11 .laneHead .ha{background:var(--navy)}
+#s11 .laneHead .blank{}
+#s11 .lane{display:grid;grid-template-columns:230px 1fr 1fr;gap:18px;align-items:stretch}
+#s11 .lane .env{display:flex;align-items:center;font-weight:700;font-size:18px;color:var(--navy);background:var(--paper-2);border-radius:10px;padding:0 20px;border-left:5px solid var(--navy-2)}
+#s11 .cell{padding:18px 22px;border-radius:10px;font-size:17px;line-height:1.5}
+#s11 .cb{background:#f3ece8;color:#7a5c4d}
+#s11 .ca{background:#eaf1f9;color:var(--navy);border:1px solid var(--line-2)}
+#s11 .cb .x,#s11 .ca .v{font-weight:900;margin-right:8px}
+#s11 .cb .x{color:#a04a3c}
+#s11 .ca .v{color:var(--green)}
+
+/* ===== S12 人机协作 三交接点（新增） ===== */
+#s12 .hub{display:grid;grid-template-columns:1fr 1fr 1fr;gap:30px;margin-top:46px}
+#s12 .hand{background:#fff;border:1px solid var(--line);border-radius:16px;padding:32px 30px 30px;position:relative;box-shadow:0 12px 34px -20px rgba(31,58,95,.34);display:flex;flex-direction:column}
+#s12 .hand .no{font-family:var(--font-serif);font-size:30px;font-weight:700;color:#fff;width:56px;height:56px;border-radius:14px;display:flex;align-items:center;justify-content:center;background:var(--navy-2)}
+#s12 .hand:nth-child(2) .no{background:var(--brick)}
+#s12 .hand:nth-child(3) .no{background:var(--green)}
+#s12 .hand h4{font-size:23px;color:var(--navy);font-weight:700;margin-top:20px;line-height:1.3}
+#s12 .hand .flowline{display:flex;align-items:center;gap:10px;margin-top:18px;flex-wrap:wrap}
+#s12 .hand .chip{font-size:15px;font-weight:700;padding:8px 14px;border-radius:8px;line-height:1.3}
+#s12 .hand .chip.m{background:#eaf1f9;color:var(--navy-2);border:1px solid var(--line-2)}
+#s12 .hand .chip.h{background:var(--brick-soft);color:var(--brick)}
+#s12 .hand .arr{color:var(--ink-3);font-size:18px;font-weight:900}
+#s12 .hand p{font-size:16px;color:var(--ink-2);line-height:1.7;margin-top:18px}
+#s12 .hand p b{color:var(--navy);font-weight:700}
+#s12 .roleRow{margin-top:40px;display:grid;grid-template-columns:1fr 1fr;gap:30px}
+#s12 .role{padding:24px 28px;border-radius:14px;font-size:19px;line-height:1.6}
+#s12 .role.mac{background:#eaf1f9;color:var(--navy);border-left:5px solid var(--navy-2)}
+#s12 .role.hum{background:var(--green-soft);color:var(--green);border-left:5px solid var(--green)}
+#s12 .role b{font-weight:900}
+
+/* ===== S13 六维度 ===== */
+#s13 .grid6{display:grid;grid-template-columns:repeat(3,1fr);gap:26px;margin-top:44px}
+#s13 .dim{background:#fff;border:1px solid var(--line);border-radius:16px;padding:32px 30px;box-shadow:0 10px 30px -18px rgba(31,58,95,.3);position:relative;overflow:hidden}
+#s13 .dim::before{content:"";position:absolute;left:0;top:0;width:100%;height:5px;background:var(--navy-2)}
+#s13 .dim:nth-child(4)::before,#s13 .dim:nth-child(5)::before,#s13 .dim:nth-child(6)::before{background:var(--brick)}
+#s13 .dim .n{font-family:var(--font-serif);font-size:40px;font-weight:700;color:var(--line-2)}
+#s13 .dim h4{font-size:23px;color:var(--navy);margin-top:6px;font-weight:700}
+#s13 .dim p{font-size:17px;color:var(--ink-2);line-height:1.65;margin-top:14px}
+#s13 .dim p b{color:var(--brick);font-weight:700}
+
+/* ===== S14 收尾 ===== */
+#s14{background:radial-gradient(1300px 900px at 75% 30%,rgba(46,90,136,.5),transparent 60%),linear-gradient(135deg,#13283f,#1f3a5f 60%,#244873)}
+#s14 .pad{display:flex;flex-direction:column;justify-content:center}
+#s14 .kicker2{color:#bcd0e8;font-size:18px;letter-spacing:.14em;font-weight:700}
+#s14 h2{font-family:var(--font-serif);color:#fff;font-size:62px;line-height:1.28;margin-top:30px}
+#s14 h2 .hl{color:#ffd27a}
+#s14 .two{display:grid;grid-template-columns:1fr 1fr;gap:36px;margin-top:60px}
+#s14 .two .b{background:rgba(255,255,255,.07);border:1px solid rgba(188,208,232,.25);border-radius:16px;padding:34px 38px}
+#s14 .two .b .t{font-size:18px;letter-spacing:.1em;color:#ffd27a;font-weight:700}
+#s14 .two .b .d{font-size:22px;color:#dceaf8;line-height:1.65;margin-top:16px}
+#s14 .disc{margin-top:64px;font-size:16px;color:#8fabce;line-height:1.7;max-width:1400px;border-top:1px solid rgba(188,208,232,.2);padding-top:26px}
+
+/* ===== 控件 ===== */
+.deck-controls{display:flex;align-items:center;gap:16px;background:rgba(19,40,63,.82);backdrop-filter:blur(8px);padding:10px 18px;border-radius:999px;border:1px solid rgba(188,208,232,.25)}
+.deck-controls button{background:none;border:none;color:#cdddf0;font-size:20px;cursor:pointer;padding:4px 10px;border-radius:8px;transition:.2s}
+.deck-controls button:hover{background:rgba(255,255,255,.12);color:#fff}
+.deck-controls .pg{font-size:15px;color:#bcd0e8;font-variant-numeric:tabular-nums;min-width:56px;text-align:center}
+.dots{position:fixed;right:30px;top:50%;transform:translateY(-50%);z-index:1000;display:flex;flex-direction:column;gap:11px}
+.dots .dot{width:11px;height:11px;border-radius:50%;background:rgba(255,255,255,.3);border:1px solid rgba(255,255,255,.5);cursor:pointer;transition:.25s}
+.dots .dot.on{background:#ffd27a;border-color:#ffd27a;transform:scale(1.35)}
+</style>
+</head>
+<body>
+<div class="deck-viewport" id="viewport">
+  <div class="deck-stage" id="stage">
+
+    <!-- ============ S1 封面 ============ -->
+    <section class="slide active" id="s1">
+      <div class="pad">
+        <div class="badge reveal"><span class="dot"></span>律豆投资管理智能体 · 创投机构法律事务高价值应用场景</div>
+        <h1 class="reveal d1">场景三 · <span class="hl">投后管理</span><br>实体合规与组合盯防全流程</h1>
+        <div class="lead reveal d2">投后不是一个有终点的项目，而是一条永远停不下来的<b>盯防线</b>——一边盯<b>"自己家"</b>的合规义务（管理人、基金、SPV 的年报与报送），一边盯<b>"组合里"</b>数百家被投企业的动态（诉讼、监管、对赌/回购/续约窗口）。</div>
+        <div class="metaRow reveal d3">
+          <div class="meta">主体规模：<b>3 支基金 + 若干 SPV</b></div>
+          <div class="meta">组合规模：<b>约 200 家被投企业</b></div>
+          <div class="meta">主线：<b>一个季度的投后组合体检</b></div>
+        </div>
+        <div class="sig reveal d4">业务时点 · 投后<br>对标投前篇《尽调实战案例》体例</div>
+      </div>
+    </section>
+
+    <!-- ============ S2 引子 两类事 ============ -->
+    <section class="slide" id="s2">
+      <div class="pad">
+        <div class="kicker reveal"><span class="bar"></span>写在前面<span class="tag">为什么投后最容易漏</span></div>
+        <div class="s-title reveal d1" style="font-size:48px;margin-top:24px">投后要同时盯两类事，少盯一类都出问题</div>
+        <div class="twoCol">
+          <div class="card bigcard c-self reveal d2">
+            <div class="ic">第一类 · 自己家</div>
+            <h3>管理人 / 基金 / SPV 的合规义务</h3>
+            <p>年报、基金业协会备案、周期性信息报送——按主体与注册地各不相同，琐碎、高频、分散。</p>
+            <div class="li"><span class="b">▶</span><span>漏一次年报，动摇的不是钱，是<b style="color:var(--brick)">管理人持续运营资格</b>。</span></div>
+            <div class="li"><span class="b">▶</span><span>SPV 数量多、义务碎，是人工台账最容易漏的角落。</span></div>
+          </div>
+          <div class="card bigcard c-pf reveal d3">
+            <div class="ic">第二类 · 组合里</div>
+            <h3>约 200 家被投企业的动态</h3>
+            <p>诉讼仲裁、监管新规、对赌考核点、回购窗口、续约/取消通知期——错过一个窗口就是真金白银的损失。</p>
+            <div class="li"><span class="b">▶</span><span>关键时点的特点是<b style="color:var(--navy-2)">"错过即丧失"</b>——窗口一关，权利就没了。</span></div>
+            <div class="li"><span class="b">▶</span><span>监管"面上"的变化，单个项目视角根本看不到。</span></div>
+          </div>
+        </div>
+        <div class="punch reveal d4">智能体不替代专业判断，而是把<span class="em">"太多、太散、太容易漏"</span>的周期盯盘接过来——汇成一张到人的待办清单。</div>
+      </div>
+      <div class="foot">律豆投资管理智能体 · 场景三 投后管理</div>
+      <div class="pageno">02 / 14</div>
+    </section>
+
+    <!-- ============ S3 六类盯防对象（新增） ============ -->
+    <section class="slide" id="s3">
+      <div class="pad">
+        <div class="kicker reveal"><span class="bar"></span>投后盯什么<span class="tag">六类盯防对象</span></div>
+        <div class="s-title reveal d1" style="font-size:46px;margin-top:22px">把"投后管理"拆成六类可盯防的对象</div>
+        <div class="grid6t">
+          <div class="obj self reveal d2"><div class="top"><span class="no">01</span><span class="cat">自己家</span></div><h4>主体合规义务</h4><p>管理人、基金、SPV 的<b>年报、协会备案、周期报送</b>——按主体注册地各不相同。</p></div>
+          <div class="obj self reveal d2"><div class="top"><span class="no">02</span><span class="cat">自己家</span></div><h4>交割后承诺事项</h4><p>投资协议交割后的<b>持续义务与先决条件</b>，分散在各项目文件里，最易遗忘。</p></div>
+          <div class="obj self reveal d3"><div class="top"><span class="no">03</span><span class="cat">自己家</span></div><h4>周期投后材料</h4><p>季度/年度<b>投后报告、LP 信披、估值调整</b>等周期性产出的合规口径。</p></div>
+          <div class="obj pf reveal d3"><div class="top"><span class="no">04</span><span class="cat">组合里</span></div><h4>关键时点盯防</h4><p><b>对赌考核点、回购行权窗口、续约/取消通知期</b>——"错过即丧失"的窗口。</p></div>
+          <div class="obj pf reveal d4"><div class="top"><span class="no">05</span><span class="cat">组合里</span></div><h4>组合诉讼态势</h4><p>约 200 家被投企业<b>新增诉讼仲裁、被执行、失信</b>等风险信号的持续监测。</p></div>
+          <div class="obj pf reveal d4"><div class="top"><span class="no">06</span><span class="cat">组合里</span></div><h4>监管动态</h4><p>影响在管基金或被投行业的<b>监管新规与政策变化</b>，"面上"的变化主动呈现。</p></div>
+        </div>
+        <div class="legendc reveal d5">
+          <div class="lg"><span class="sw" style="background:var(--brick)"></span>自己家 · 管理人/基金/SPV 自身的合规义务</div>
+          <div class="lg"><span class="sw" style="background:var(--navy-2)"></span>组合里 · 被投企业动态与外部环境</div>
+        </div>
+      </div>
+      <div class="foot">六类盯防对象，对应一套<b>周期巡检 + 到人待办</b>的统一打法</div>
+      <div class="pageno">03 / 14</div>
+    </section>
+
+    <!-- ============ S4 巡检主线 ============ -->
+    <section class="slide" id="s4">
+      <div class="pad">
+        <div class="kicker reveal"><span class="bar"></span>一、巡检主线<span class="tag">季度例会前一周</span></div>
+        <div class="s-title reveal d1" style="font-size:46px;margin-top:22px">跟着一次全组合体检走一遍</div>
+        <div class="flow">
+          <div class="steps reveal d2">
+            <div class="step hot"><span class="node"></span><div class="t">巡检启动</div><div class="d">一键跑全组合，几分钟出"风险全景"</div></div>
+            <div class="step hot"><span class="node"></span><div class="t">第一类发现</div><div class="d">自己家的合规红线：年报与报送</div></div>
+            <div class="step"><span class="node"></span><div class="t">第二类发现</div><div class="d">关键时点：对赌·回购·续约窗口</div></div>
+            <div class="step"><span class="node"></span><div class="t">第三类发现</div><div class="d">组合诉讼态势与监管动态</div></div>
+            <div class="step hot"><span class="node"></span><div class="t">巡检产出</div><div class="d">一张全景表 + 一份到人待办</div></div>
+          </div>
+          <div class="card panel reveal d3">
+            <h3>本次巡检顶出来的事 <span class="pill">按紧急度排序</span></h3>
+            <div class="finds">
+              <div class="find red"><span class="lv">最高</span><span class="txt"><b>某二期基金管理人年报</b>将到期 · 逾期影响管理人资格</span><span class="due">30 天内</span></div>
+              <div class="find red"><span class="lv">合规</span><span class="txt"><b>某 SPV 季度信息报送</b>临近截止 · 最易漏的角落</span><span class="due">12 天后</span></div>
+              <div class="find"><span class="lv">时点</span><span class="txt"><b>A/B/C 三家</b>对赌考核 · 回购窗口 · 续约通知</span><span class="due">60–88 天</span></div>
+              <div class="find"><span class="lv">诉讼</span><span class="txt"><b>D 公司</b>新增约 2000 万买卖合同纠纷（一审中）</span><span class="due">持续跟踪</span></div>
+              <div class="find"><span class="lv">监管</span><span class="txt"><b>创投基金信披新规</b> · 适用全部 3 支在管基金</span><span class="due">生效日前</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="foot">几分钟出全景，半天的体力活变成一上午的<b>判断活</b></div>
+      <div class="pageno">04 / 14</div>
+    </section>
+
+    <!-- ============ S5 风险全景表 ============ -->
+    <section class="slide" id="s5">
+      <div class="pad">
+        <div class="kicker reveal"><span class="bar"></span>一、巡检产出<span class="tag">本季度投后风险全景</span></div>
+        <div class="s-title reveal d1" style="font-size:46px;margin-top:22px">智能体顶出来的事项，如何排进待办</div>
+        <table class="reveal d2">
+          <thead><tr><th>发现的事项</th><th>为什么要紧</th><th>到期 / 窗口</th><th>落地的处置安排</th></tr></thead>
+          <tbody>
+            <tr class="r1"><td>某二期基金管理人年报到期</td><td>逾期影响管理人资格（最高优先级）</td><td class="due">30 天内</td><td>本周启动资料准备，倒排报送节点，法务负责人复核后报送</td></tr>
+            <tr><td>某 SPV 季度信息报送临近</td><td>义务琐碎、最易漏，漏报有合规瑕疵</td><td class="due">12 天后</td><td>指派对接人本周完成，纳入下季度自动巡检固定项</td></tr>
+            <tr><td>A/B/C 三家对赌·回购·续约窗口</td><td>错过即丧失行权 / 谈判机会</td><td class="due">60–88 天</td><td>提前通知投资经理，法务评估行权条件，必要时启动谈判</td></tr>
+            <tr><td>D 公司重大未决诉讼（约 2000 万）</td><td>可能影响估值与退出安排</td><td class="due">一审中</td><td>项目组持续跟踪，重大节点上报例会，必要时请外部律所评估</td></tr>
+            <tr><td>创投基金信息披露新规</td><td>适用全部 3 支在管基金</td><td class="due">生效日前</td><td>统一调整季度披露模板，一次改、三支基金同步落地</td></tr>
+          </tbody>
+        </table>
+        <div class="note reveal d3">李律师带着这张<b>全组合、按优先级排序、每条标到人和截止日</b>的全景表上会——既守住了管理人资格的合规底线，也没让任何一个"错过即丧失"的窗口悄悄溜走。</div>
+      </div>
+      <div class="foot">律豆投资管理智能体 · 场景三 投后管理</div>
+      <div class="pageno">05 / 14</div>
+    </section>
+
+    <!-- ============ S6 第一类深挖 主体合规义务（新增） ============ -->
+    <section class="slide" id="s6">
+      <div class="pad">
+        <div class="kicker reveal"><span class="bar"></span>第一类 · 深挖<span class="tag">自己家的合规红线</span></div>
+        <div class="s-title reveal d1" style="font-size:46px;margin-top:22px">主体合规义务：管理人、基金、SPV 的年报与报送</div>
+        <div class="layout">
+          <div class="subj reveal d2">
+            <table>
+              <thead><tr><th>主体</th><th>典型周期义务</th><th>本季到期</th></tr></thead>
+              <tbody>
+                <tr><td>管理人</td><td>协会年报、从业人员与高管信息更新</td><td class="due">30 天内</td></tr>
+                <tr><td>一期基金</td><td>季度/年度信息报送、估值更新</td><td>已完成</td></tr>
+                <tr><td>二期基金</td><td>管理人年报关联、季度报送</td><td class="due">30 天内</td></tr>
+                <tr><td>三期基金</td><td>新设备案后续、季度报送</td><td class="due">45 天</td></tr>
+                <tr><td>SPV（多个）</td><td>季度信息报送、工商年报</td><td class="due">12 天后</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="why">
+            <div class="whycard reveal d3">
+              <h4><span class="ico">!</span>为什么这是红线</h4>
+              <p>漏一次管理人年报，动摇的不是一笔钱，而是<b>管理人持续运营资格</b>——一旦异常，整个机构的展业都受影响，是投后最不能踩的底线。</p>
+            </div>
+            <div class="whycard nav reveal d4">
+              <h4><span class="ico">▢</span>SPV 是最易漏的角落</h4>
+              <p>SPV 数量多、义务碎、分散在不同注册地，人工台账盯不全。智能体<b>按主体注册地自动算截止日</b>，把碎义务收进同一张巡检表，漏不掉。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="foot">机器负责<b>按主体注册地把硬义务算准、提醒早</b>；人负责复核与报送决策</div>
+      <div class="pageno">06 / 14</div>
+    </section>
+
+    <!-- ============ S7 第二类深挖 关键时点（新增） ============ -->
+    <section class="slide" id="s7">
+      <div class="pad">
+        <div class="kicker reveal"><span class="bar"></span>第二类 · 深挖<span class="tag">错过即丧失的窗口</span></div>
+        <div class="s-title reveal d1" style="font-size:46px;margin-top:22px">关键时点盯防：每个窗口都附"条件·权利·后果"</div>
+        <div class="gates">
+          <div class="gate g1 reveal d2">
+            <div class="gh"><div class="co">A 公司 · 对赌</div><div class="nm">业绩考核点</div></div>
+            <div class="gb">
+              <div class="row"><span class="k">触发条件</span><span class="v">考核期末净利润 / 营收未达约定阈值</span></div>
+              <div class="row"><span class="k">对应权利</span><span class="v">可主张<b>估值调整或现金/股权补偿</b></span></div>
+              <div class="row"><span class="k">到期窗口</span><span class="v">约 <b>60 天</b>后考核点截止</span></div>
+              <div class="csq">不在节点前核对数据并主张，可能视为放弃本期调整权利</div>
+            </div>
+          </div>
+          <div class="gate g2 reveal d3">
+            <div class="gh"><div class="co">B 公司 · 回购</div><div class="nm">回购行权窗口</div></div>
+            <div class="gb">
+              <div class="row"><span class="k">触发条件</span><span class="v">触发回购事由（如未上市/业绩/违约）</span></div>
+              <div class="row"><span class="k">对应权利</span><span class="v">可在窗口内<b>书面行使回购请求权</b></span></div>
+              <div class="row"><span class="k">到期窗口</span><span class="v">约 <b>75 天</b>后行权期届满</span></div>
+              <div class="csq">窗口一关，回购请求权可能丧失或受限，错过没有补救</div>
+            </div>
+          </div>
+          <div class="gate g3 reveal d4">
+            <div class="gh"><div class="co">C 公司 · 续约</div><div class="nm">供货合同续约窗口</div></div>
+            <div class="gb">
+              <div class="row"><span class="k">触发条件</span><span class="v">合同约定的续约/解约通知期临近</span></div>
+              <div class="row"><span class="k">对应权利</span><span class="v">可在通知期内<b>选择续约或终止</b></span></div>
+              <div class="row"><span class="k">到期窗口</span><span class="v">约 <b>88 天</b>后通知期截止</span></div>
+              <div class="csq">关窗即按默认条款自动续/止，丧失重新谈判的主动权</div>
+            </div>
+          </div>
+        </div>
+        <div class="lead7 reveal d5">智能体把每个窗口在到期前足够早顶到台面，并附上<b>触发条件、对应权利、不行动的后果</b>——给法务留出研判和谈判的准备时间。</div>
+      </div>
+      <div class="foot">人定规则、机盯窗口；窗口将关时，提醒一定<b>到人</b></div>
+      <div class="pageno">07 / 14</div>
+    </section>
+
+    <!-- ============ S8 90天时间轴 ============ -->
+    <section class="slide" id="s8">
+      <div class="pad">
+        <div class="kicker reveal"><span class="bar"></span>盯防视图<span class="tag">未来 90 天关键时点</span></div>
+        <div class="s-title reveal d1" style="font-size:46px;margin-top:22px">智能体把这些窗口在到期前顶到台面</div>
+        <div class="axis">
+          <div class="axisLine"><div class="fill" id="axisFill"></div></div>
+          <div class="tk red" style="left:21%"></div>
+          <div class="tk red" style="left:33%"></div>
+          <div class="tk green" style="left:60%"></div>
+          <div class="tk gold" style="left:75%"></div>
+          <div class="tk gold" style="left:88%"></div>
+
+          <div class="ev up" style="left:21%;transition-delay:.2s"><div class="day">12<span class="u">天</span></div><div class="lab">某 SPV 季度信息报送</div><div class="sub">合规义务 · 最易漏的角落</div><div class="pin"></div></div>
+          <div class="ev dn" style="left:33%;transition-delay:.4s"><div class="day">30<span class="u">天</span></div><div class="lab">某二期基金管理人年报</div><div class="sub">最高优先级 · 影响管理人资格</div><div class="pin"></div></div>
+          <div class="ev up" style="left:60%;transition-delay:.6s"><div class="day">60<span class="u">天</span></div><div class="lab">A 公司对赌业绩考核点</div><div class="sub">关键时点 · 评估行权条件</div><div class="pin"></div></div>
+          <div class="ev dn" style="left:75%;transition-delay:.8s"><div class="day">75<span class="u">天</span></div><div class="lab">B 公司回购行权窗口</div><div class="sub">错过即丧失 · 提前准备行权</div><div class="pin"></div></div>
+          <div class="ev up" style="left:88%;transition-delay:1s"><div class="day">88<span class="u">天</span></div><div class="lab">C 公司供货合同续约窗口</div><div class="sub">关窗即自动续/止 · 提前谈判</div><div class="pin"></div></div>
+        </div>
+        <div class="legend7 reveal d3">
+          <div class="lg"><span class="sw" style="border-color:var(--brick)"></span>合规红线 / 报送义务</div>
+          <div class="lg"><span class="sw" style="border-color:var(--green)"></span>对赌考核点</div>
+          <div class="lg"><span class="sw" style="border-color:var(--gold)"></span>回购 / 续约窗口（错过即丧失）</div>
+        </div>
+      </div>
+      <div class="foot">每条都附"触发条件、对应权利、不行动的后果"——留出行权或谈判的准备时间</div>
+      <div class="pageno">08 / 14</div>
+    </section>
+
+    <!-- ============ S9 第三类深挖 诉讼与监管（新增） ============ -->
+    <section class="slide" id="s9">
+      <div class="pad">
+        <div class="kicker reveal"><span class="bar"></span>第三类 · 深挖<span class="tag">组合诉讼态势 + 监管动态</span></div>
+        <div class="s-title reveal d1" style="font-size:46px;margin-top:22px">单个项目看不到的"面上"风险，组合层面统一监测</div>
+        <div class="twoArea">
+          <div class="area lit reveal d2">
+            <div class="badge2">诉讼</div>
+            <div class="ah"><span class="tag">组合诉讼态势</span><h3>新增诉讼主动呈现</h3></div>
+            <div class="case">
+              <div class="ttl">D 公司新增买卖合同纠纷</div>
+              <div class="meta">标的约 <b>2000 万元</b> · 当前<b>一审审理中</b><br>智能体在组合层面监测到新增立案信息，主动顶到本季巡检。</div>
+            </div>
+            <div class="act"><span class="arr">▶</span><span>项目组持续跟踪进展，重大节点上报例会；评估对 <b>估值与退出安排</b> 的潜在影响，必要时请外部律所出具评估意见。</span></div>
+          </div>
+          <div class="area reg reveal d3">
+            <div class="badge2">监管</div>
+            <div class="ah"><span class="tag">监管动态</span><h3>新规一次改、三支同步</h3></div>
+            <div class="case">
+              <div class="ttl">创投基金信息披露新规</div>
+              <div class="meta">适用<b>全部 3 支在管基金</b><br>智能体监测到适用本机构的新规，关联到受影响的全部主体。</div>
+            </div>
+            <div class="act"><span class="arr">▶</span><span>统一调整季度披露模板，<b>一次修订、三支基金同步落地</b>；避免逐支基金各改一遍带来的口径不一致与遗漏。</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="foot">组合层面的统一视图，是单个项目视角永远拼不出来的<b>全局判断</b></div>
+      <div class="pageno">09 / 14</div>
+    </section>
+
+    <!-- ============ S10 Before/After 揭幕滑块 ============ -->
+    <section class="slide" id="s10">
+      <div class="pad">
+        <div class="kicker reveal"><span class="bar"></span>二、Before vs After<span class="tag">拖动中间滑块对比</span></div>
+        <div class="s-title reveal d1" style="font-size:46px;margin-top:22px">同一套投后工作，用不用智能体</div>
+        <div class="baWrap reveal d2" id="baWrap">
+          <div class="baLayer baBefore">
+            <div class="baTag">BEFORE · 没有智能体</div>
+            <h3>事后救火</h3>
+            <div class="li"><span class="m">×</span>Excel 台账 + 日历 + 各人邮件，靠人工维护和记忆</div>
+            <div class="li"><span class="m">×</span>主体一多就盯不过来，SPV 这类琐碎义务最易漏</div>
+            <div class="li"><span class="m">×</span>关键窗口靠人记，关窗即丧失，错过没有补救</div>
+            <div class="li"><span class="m">×</span>例会前临时翻台账催邮件，大半天还未必全</div>
+          </div>
+          <div class="baLayer baAfter" id="baAfter">
+            <div class="baTag">AFTER · 用律豆智能体</div>
+            <h3>事前提醒</h3>
+            <div class="li"><span class="m">✓</span>按主体与注册地自动算截止日，周期自动巡检</div>
+            <div class="li"><span class="m">✓</span>未来 30/60/90 天到期事项自动浮现，红线置顶</div>
+            <div class="li"><span class="m">✓</span>关键时点到期前足够早预警，留出准备时间</div>
+            <div class="li"><span class="m">✓</span>几分钟出一张到人的风险全景，直接上会</div>
+          </div>
+          <div class="baHandle" id="baHandle"><div class="knob">⇄</div></div>
+          <div class="baHint">← 拖动查看前后对比 →</div>
+        </div>
+        <div class="punch reveal d3">
+          <div class="p pb"><b>Before：</b>靠人工台账和记忆盯一堆分散的义务和时点，漏了往往等出事才知道。</div>
+          <div class="p pa"><b>After：</b>周期自动巡检把到期义务、关键窗口、诉讼监管在足够早时顶到台面，法务只管判断和处置。</div>
+        </div>
+      </div>
+      <div class="foot">最值钱的差别：那条管理人资格的<b>红线</b>——After 在到期前 30 天就排到了全景表第一行</div>
+      <div class="pageno">10 / 14</div>
+    </section>
+
+    <!-- ============ S11 泳道对照 ============ -->
+    <section class="slide" id="s11">
+      <div class="pad">
+        <div class="kicker reveal"><span class="bar"></span>二、逐环节对照<span class="tag">六个关键环节</span></div>
+        <div class="s-title reveal d1" style="font-size:46px;margin-top:22px">新旧工作流，逐环节看落差</div>
+        <div class="lanes">
+          <div class="laneHead reveal d2"><div class="blank"></div><div class="h hb">Before · 没有智能体</div><div class="h ha">After · 用律豆智能体</div></div>
+          <div class="lane reveal d2"><div class="env">盯防方式</div><div class="cell cb"><span class="x">×</span>Excel + 日历 + 邮件，靠人工维护和记忆</div><div class="cell ca"><span class="v">✓</span>按主体注册地自动算，一次扫完全部主体与组合</div></div>
+          <div class="lane reveal d3"><div class="env">合规义务到期</div><div class="cell cb"><span class="x">×</span>人逐行核对，SPV 义务最易漏，临到截止才发现</div><div class="cell ca"><span class="v">✓</span>30/60/90 天到期自动浮现，年报红线顶到第一行</div></div>
+          <div class="lane reveal d3"><div class="env">关键时点</div><div class="cell cb"><span class="x">×</span>散落各文件，靠记忆，错过窗口即丧失权利</div><div class="cell ca"><span class="v">✓</span>到期前足够早预警，附触发条件与不行动后果</div></div>
+          <div class="lane reveal d4"><div class="env">诉讼与监管</div><div class="cell cb"><span class="x">×</span>分散无统一视图，新规靠印象，事后才发现</div><div class="cell ca"><span class="v">✓</span>组合层面统一监测，新增诉讼与新规主动呈现</div></div>
+          <div class="lane reveal d4"><div class="env">例会准备</div><div class="cell cb"><span class="x">×</span>临时翻台账催邮件，大半天还未必全</div><div class="cell ca"><span class="v">✓</span>几分钟出排好优先级、标到人的全景表直接上会</div></div>
+          <div class="lane reveal d5"><div class="env">整体状态</div><div class="cell cb"><span class="x">×</span>事后救火——出了事才知道，处处被动</div><div class="cell ca"><span class="v">✓</span>事前提醒——窗口关闭前提醒到人，处处主动</div></div>
+        </div>
+      </div>
+      <div class="foot">机器负责<b>盯得全、提醒得早、汇总得清</b>；人负责<b>判得准、定得了、担得起责任</b></div>
+      <div class="pageno">11 / 14</div>
+    </section>
+
+    <!-- ============ S12 人机协作 三交接点（新增） ============ -->
+    <section class="slide" id="s12">
+      <div class="pad">
+        <div class="kicker reveal"><span class="bar"></span>三、人机如何协作<span class="tag">三个清晰的交接点</span></div>
+        <div class="s-title reveal d1" style="font-size:46px;margin-top:22px">机器盯盘汇总，人判断决策——边界划清楚</div>
+        <div class="hub">
+          <div class="hand reveal d2">
+            <div class="no">1</div>
+            <h4>机出全景<br>交人研判</h4>
+            <div class="flowline"><span class="chip m">机：周期巡检出全景表</span><span class="arr">→</span><span class="chip h">人：研判与定优先级</span></div>
+            <p>智能体几分钟跑完全组合、出排好序的风险全景；<b>是否要紧、怎么排</b>由法务判断。</p>
+          </div>
+          <div class="hand reveal d3">
+            <div class="no">2</div>
+            <h4>人定规则<br>交机巡检</h4>
+            <div class="flowline"><span class="chip h">人：定盯防规则与阈值</span><span class="arr">→</span><span class="chip m">机：按规则自动巡检</span></div>
+            <p>哪些主体、哪些时点、提前多少天预警，<b>规则由人设定</b>；机器据此把碎义务盯全、提醒早。</p>
+          </div>
+          <div class="hand reveal d4">
+            <div class="no">3</div>
+            <h4>重大事项<br>复核上报</h4>
+            <div class="flowline"><span class="chip m">机：标记重大事项</span><span class="arr">→</span><span class="chip h">人：复核后上报例会</span></div>
+            <p>涉及行权、回购、重大诉讼的事项，机器只做标记与底稿，<b>最终处置由人复核确认</b>后作出。</p>
+          </div>
+        </div>
+        <div class="roleRow reveal d5">
+          <div class="role mac"><b>机器：</b>盯得全、算得准、提醒得早、汇总得清——把"太多太散太易漏"接过来。</div>
+          <div class="role hum"><b>人：</b>判得准、定得了、担得起责任——专业判断与重大决策始终在人手里。</div>
+        </div>
+      </div>
+      <div class="foot">智能体不替代专业判断，而是让法务把时间花在<b>真正需要判断的地方</b></div>
+      <div class="pageno">12 / 14</div>
+    </section>
+
+    <!-- ============ S13 六维度 ============ -->
+    <section class="slide" id="s13">
+      <div class="pad">
+        <div class="kicker reveal"><span class="bar"></span>三、拆开看<span class="tag">这套投后打法的六个关键面</span></div>
+        <div class="s-title reveal d1" style="font-size:44px;margin-top:20px">从"盯什么"到"怎么落地"</div>
+        <div class="grid6">
+          <div class="dim reveal d2"><div class="n">01</div><h4>投后要盯什么</h4><p>主体合规义务、关键时点盯防、组合诉讼态势、监管动态、交割后承诺、周期投后材料——<b>六类盯防对象</b>。</p></div>
+          <div class="dim reveal d2"><div class="n">02</div><h4>以前怎么做</h4><p>Excel 台账靠人工维护，信息分散在各人邮件，关键时点靠记忆——<b>太多、太散、易漏、被动</b>。</p></div>
+          <div class="dim reveal d3"><div class="n">03</div><h4>智能体怎么做</h4><p>按主体注册地自动算截止日、时点到期前自动预警、组合层面统一汇总、<b>周期巡检出到人待办</b>。</p></div>
+          <div class="dim reveal d3"><div class="n">04</div><h4>人机如何协作</h4><p>机器盯盘汇总，人判断决策。<b>三个交接点</b>：机出全景交人研判 / 人定规则交机巡检 / 重大事项复核上报。</p></div>
+          <div class="dim reveal d4"><div class="n">05</div><h4>如何衡量</h4><p>到期覆盖率与<b>提前提醒天数</b>、漏报与错过窗口次数、例会准备工时变化——三个核心指标长期度量。</p></div>
+          <div class="dim reveal d4"><div class="n">06</div><h4>怎么落地启用</h4><p>梳理主体组合台账 → 配置盯防规则 → 启用周期巡检 → 明确人机规则 → <b>固化迭代沉淀机构标准</b>。</p></div>
+        </div>
+      </div>
+      <div class="foot">所有输出都是工作底稿与提醒，重大事项最终处置由法务与投资合伙人复核确认后作出</div>
+      <div class="pageno">13 / 14</div>
+    </section>
+
+    <!-- ============ S14 收尾 ============ -->
+    <section class="slide" id="s14">
+      <div class="pad">
+        <div class="kicker2 reveal">投后管理 · 一句话</div>
+        <h2 class="reveal d1">把<span class="hl">"太多、太散、太容易漏"</span>的周期盯盘交给智能体，<br>把<span class="hl">判断与决策</span>留在人手里。</h2>
+        <div class="two">
+          <div class="b reveal d2"><div class="t">守住底线</div><div class="d">管理人资格的合规红线，在到期前 30 天就排到全景表第一行——少漏一次硬义务，工具价值就回来了。</div></div>
+          <div class="b reveal d3"><div class="t">不丢机会</div><div class="d">每一个"错过即丧失"的对赌、回购、续约窗口，都在关闭前足够早地提醒到人，留出行权与谈判的时间。</div></div>
+        </div>
+        <div class="disc reveal d4">重要说明：律豆投资管理智能体定位为创投机构法律事务的效率与质量赋能工具，所有输出均为工作底稿与建议，不构成法律意见，不替代专业人员的独立判断；涉及重大事项的最终决定，仍应由执业律师或法务负责人复核确认后作出。</div>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<!-- dots -->
+<div class="dots" id="dots"></div>
+<!-- controls -->
+<div class="deck-controls">
+  <button id="prev">‹</button>
+  <span class="pg" id="pg">1 / 14</span>
+  <button id="next">›</button>
+</div>
+
+<script>
+/* ===== fixed-stage scaling ===== */
+const stage=document.getElementById('stage'),viewport=document.getElementById('viewport');
+function fit(){const s=Math.min(viewport.clientWidth/1920,viewport.clientHeight/1080);
+  const x=(viewport.clientWidth-1920*s)/2,y=(viewport.clientHeight-1080*s)/2;
+  stage.style.transform=`translate(${x}px,${y}px) scale(${s})`;}
+window.addEventListener('resize',fit);fit();
+
+/* ===== slide nav ===== */
+const slides=[...document.querySelectorAll('.slide')];let cur=0;
+const dotsBox=document.getElementById('dots');
+slides.forEach((_,i)=>{const d=document.createElement('div');d.className='dot'+(i===0?' on':'');d.onclick=()=>go(i);dotsBox.appendChild(d);});
+const dots=[...dotsBox.children];
+function go(i){i=Math.max(0,Math.min(slides.length-1,i));slides[cur].classList.remove('active');dots[cur].classList.remove('on');cur=i;slides[cur].classList.add('active');dots[cur].classList.add('on');document.getElementById('pg').textContent=(i+1)+' / '+slides.length;if(slides[cur].id==='s8')runAxis();}
+document.getElementById('next').onclick=()=>go(cur+1);
+document.getElementById('prev').onclick=()=>go(cur-1);
+window.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' '){e.preventDefault();go(cur+1);}if(e.key==='ArrowLeft')go(cur-1);});
+
+/* ===== Before/After slider ===== */
+(function(){const wrap=document.getElementById('baWrap'),after=document.getElementById('baAfter'),handle=document.getElementById('baHandle');let drag=false;
+function setP(px){const r=wrap.getBoundingClientRect();let p=(px-r.left)/r.width;p=Math.max(.04,Math.min(.96,p));after.style.clipPath=`inset(0 0 0 ${p*100}%)`;handle.style.left=(p*100)+'%';}
+handle.addEventListener('mousedown',()=>drag=true);
+window.addEventListener('mouseup',()=>drag=false);
+window.addEventListener('mousemove',e=>{if(drag)setP(e.clientX);});
+handle.addEventListener('touchstart',()=>drag=true,{passive:true});
+window.addEventListener('touchend',()=>drag=false);
+window.addEventListener('touchmove',e=>{if(drag&&e.touches[0])setP(e.touches[0].clientX);},{passive:true});
+wrap.addEventListener('click',e=>{if(e.target!==handle&&!handle.contains(e.target))setP(e.clientX);});
+})();
+
+/* ===== axis fill anim ===== */
+let axisDone=false;
+function runAxis(){if(axisDone)return;axisDone=true;const f=document.getElementById('axisFill');if(f)setTimeout(()=>f.style.width='100%',200);}
+</script>
+</body>
+</html>
