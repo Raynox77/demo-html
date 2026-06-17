@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claude 法律行业实用部署指南</title>
+
+<!-- Fonts: Noto Serif SC (display) + Noto Sans SC (body) — distinctive CJK pairing -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@500;700;900&family=Noto+Sans+SC:wght@300;400;500;700&family=Manrope:wght@600;800&display=swap">
+
+<style>
+/* ===========================================
+   THEME — Dark professional, gold + steel-blue accents
+   Change these variables to retheme the whole deck
+   =========================================== */
+:root {
+    --stage-bg: #05070d;
+    --slide-bg: #0a0f1c;
+    --bg-panel: #111a2e;
+    --bg-panel-2: #16223c;
+    --ink: #f4f7fb;
+    --ink-dim: #aebbd0;
+    --ink-faint: #6b7a93;
+    --gold: #d4af6a;
+    --gold-soft: rgba(212, 175, 106, 0.14);
+    --blue: #5b9bd5;
+    --blue-soft: rgba(91, 155, 213, 0.14);
+    --teal: #4fd1c5;
+    --red: #e57373;
+    --green: #7bc99a;
+    --line: rgba(174, 187, 208, 0.16);
+    --line-strong: rgba(212, 175, 106, 0.45);
+
+    --font-display: 'Noto Serif SC', serif;
+    --font-body: 'Noto Sans SC', sans-serif;
+    --font-num: 'Manrope', 'Noto Sans SC', sans-serif;
+
+    --ease: cubic-bezier(0.16, 1, 0.3, 1);
+    --dur: 0.7s;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+/* === FIXED 16:9 STAGE: MANDATORY BASE (from viewport-base.css) === */
+html, body {
+    width: 100%; height: 100%; margin: 0;
+    overflow: hidden; background: var(--stage-bg);
+}
+.deck-viewport { position: fixed; inset: 0; overflow: hidden; background: var(--stage-bg); }
+.deck-stage {
+    position: absolute; left: 0; top: 0;
+    width: 1920px; height: 1080px; overflow: hidden;
+    transform-origin: 0 0; background: var(--slide-bg);
+}
+.slide {
+    position: absolute; inset: 0; width: 1920px; height: 1080px;
+    overflow: hidden; display: block;
+    visibility: hidden; opacity: 0; pointer-events: none;
+    background: var(--slide-bg);
+}
+.slide.active, .slide.visible {
+    visibility: visible; opacity: 1; pointer-events: auto; z-index: 1;
+}
+img, video, canvas, svg { max-width: 100%; max-height: 100%; }
+.deck-controls { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 1000; }
+@media print {
+    html, body { width: 1920px; height: auto; overflow: visible; background: #fff; }
+    .deck-viewport { position: static; overflow: visible; background: #fff; }
+    .deck-stage { position: static; width: auto; height: auto; transform: none !important; background: none; }
+    .slide { position: relative; display: block !important; visibility: visible !important; opacity: 1 !important;
+        pointer-events: auto !important; width: 1920px; height: 1080px; break-after: page; page-break-after: always; }
+    .slide:last-child { break-after: auto; page-break-after: auto; }
+    .deck-controls { display: none !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.2s !important; }
+}
+
+/* === SHARED SLIDE FOUNDATION === */
+.slide {
+    font-family: var(--font-body);
+    color: var(--ink);
+    padding: 96px 120px;
+    background:
+        radial-gradient(1200px 700px at 85% -10%, rgba(91,155,213,0.10), transparent 60%),
+        radial-gradient(1000px 600px at -10% 110%, rgba(212,175,106,0.08), transparent 55%),
+        var(--slide-bg);
+}
+/* subtle dot grid texture */
+.slide::before {
+    content: ""; position: absolute; inset: 0;
+    background-image: radial-gradient(rgba(174,187,208,0.05) 1px, transparent 1px);
+    background-size: 38px 38px; pointer-events: none; z-index: 0;
+}
+.slide > * { position: relative; z-index: 1; }
+
+/* === SLIDE KICKER + HEADINGS === */
+.kicker {
+    display: inline-flex; align-items: center; gap: 12px;
+    font-family: var(--font-num); font-weight: 800; letter-spacing: 3px;
+    font-size: 19px; color: var(--gold); text-transform: uppercase;
+    margin-bottom: 22px;
+}
+.kicker::before { content: ""; width: 38px; height: 2px; background: var(--gold); display: inline-block; }
+.s-title {
+    font-family: var(--font-display); font-weight: 900;
+    font-size: 62px; line-height: 1.12; color: var(--ink); letter-spacing: 0.5px;
+}
+.s-sub { font-size: 25px; color: var(--ink-dim); margin-top: 16px; line-height: 1.5; max-width: 1400px; }
+.pagenum {
+    position: absolute; right: 64px; bottom: 52px; z-index: 2;
+    font-family: var(--font-num); font-weight: 800; font-size: 18px; color: var(--ink-faint);
+}
+.brandmark {
+    position: absolute; left: 120px; bottom: 52px; z-index: 2;
+    font-family: var(--font-num); font-weight: 600; font-size: 16px; color: var(--ink-faint);
+    letter-spacing: 1px;
+}
+
+/* === REVEAL ANIMATIONS === */
+.reveal { opacity: 0; transform: translateY(34px);
+    transition: opacity var(--dur) var(--ease), transform var(--dur) var(--ease); }
+.slide.visible .reveal { opacity: 1; transform: translateY(0); }
+.slide.visible .reveal:nth-child(1) { transition-delay: 0.08s; }
+.slide.visible .reveal:nth-child(2) { transition-delay: 0.18s; }
+.slide.visible .reveal:nth-child(3) { transition-delay: 0.28s; }
+.slide.visible .reveal:nth-child(4) { transition-delay: 0.38s; }
+.slide.visible .reveal:nth-child(5) { transition-delay: 0.48s; }
+.slide.visible .reveal:nth-child(6) { transition-delay: 0.58s; }
+/* stagger helper for grids */
+.stagger > * { opacity: 0; transform: translateY(28px);
+    transition: opacity 0.6s var(--ease), transform 0.6s var(--ease); }
+.slide.visible .stagger > * { opacity: 1; transform: translateY(0); }
+.slide.visible .stagger > *:nth-child(1){transition-delay:.15s}
+.slide.visible .stagger > *:nth-child(2){transition-delay:.23s}
+.slide.visible .stagger > *:nth-child(3){transition-delay:.31s}
+.slide.visible .stagger > *:nth-child(4){transition-delay:.39s}
+.slide.visible .stagger > *:nth-child(5){transition-delay:.47s}
+.slide.visible .stagger > *:nth-child(6){transition-delay:.55s}
+.slide.visible .stagger > *:nth-child(7){transition-delay:.63s}
+.slide.visible .stagger > *:nth-child(8){transition-delay:.71s}
+.slide.visible .stagger > *:nth-child(9){transition-delay:.79s}
+.slide.visible .stagger > *:nth-child(10){transition-delay:.87s}
+.slide.visible .stagger > *:nth-child(11){transition-delay:.95s}
+.slide.visible .stagger > *:nth-child(12){transition-delay:1.03s}
+
+/* ============================================================
+   SLIDE 1 — COVER
+   ============================================================ */
+.cover { display: flex; flex-direction: column; justify-content: center; padding: 0 140px; }
+.cover-glow {
+    position: absolute; width: 900px; height: 900px; border-radius: 50%;
+    right: -180px; top: -220px;
+    background: radial-gradient(circle, rgba(212,175,106,0.22), transparent 62%);
+    filter: blur(8px); z-index: 0;
+}
+.cover-rings { position: absolute; right: 90px; bottom: 80px; z-index: 0; opacity: 0.5; }
+.cover-tag {
+    font-family: var(--font-num); font-weight: 800; letter-spacing: 6px; font-size: 22px;
+    color: var(--gold); text-transform: uppercase; margin-bottom: 30px;
+}
+.cover h1 {
+    font-family: var(--font-display); font-weight: 900; font-size: 118px;
+    line-height: 1.04; letter-spacing: 1px;
+    background: linear-gradient(120deg, #ffffff 30%, var(--gold) 120%);
+    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+}
+.cover-en { font-family: var(--font-num); font-weight: 600; font-size: 30px; color: var(--ink-dim); margin-top: 18px; letter-spacing: 1px; }
+.cover-rule { width: 120px; height: 4px; background: var(--gold); margin: 44px 0 36px; }
+.cover-meta { font-size: 23px; color: var(--ink-dim); line-height: 1.9; }
+.cover-meta b { color: var(--ink); font-weight: 700; }
+
+/* ============================================================
+   SLIDE 2 — BIG STAT / inflection
+   ============================================================ */
+.stat-row { display: flex; gap: 40px; margin-top: 14px; }
+.stat-card {
+    flex: 1; background: linear-gradient(160deg, var(--bg-panel), rgba(17,26,46,0.4));
+    border: 1px solid var(--line); border-radius: 20px; padding: 48px 44px;
+    position: relative; overflow: hidden;
+}
+.stat-card::after { content:""; position:absolute; left:0; top:0; width:5px; height:100%; background: var(--gold); }
+.stat-big { font-family: var(--font-num); font-weight: 800; font-size: 96px; line-height: 1; color: var(--gold); }
+.stat-big small { font-size: 46px; color: var(--ink-dim); }
+.stat-label { font-size: 23px; color: var(--ink-dim); margin-top: 18px; line-height: 1.5; }
+.trend-wrap { margin-top: 56px; background: var(--bg-panel); border:1px solid var(--line); border-radius:20px; padding: 44px 56px; }
+.trend-title { font-size: 24px; color: var(--ink); font-weight: 700; margin-bottom: 34px; }
+.trend-title span { color: var(--gold); }
+.bars { display: flex; align-items: flex-end; gap: 60px; height: 250px; }
+.bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; }
+.bar {
+    width: 130px; border-radius: 10px 10px 0 0; position: relative;
+    background: linear-gradient(180deg, var(--gold), rgba(212,175,106,0.35));
+    transition: height 1.1s var(--ease); height: 0;
+}
+.slide.visible .bar { height: var(--h); }
+.bar .bv { position: absolute; top: -44px; left: 50%; transform: translateX(-50%); font-family: var(--font-num); font-weight: 800; font-size: 32px; color: var(--ink); }
+.bar-yr { margin-top: 18px; font-family: var(--font-num); font-weight: 700; font-size: 22px; color: var(--ink-dim); }
+.bar-col:last-child .bar { background: linear-gradient(180deg, var(--teal), rgba(79,209,197,0.35)); }
+
+/* ============================================================
+   SLIDE 3 — TABLE OF CONTENTS / roadmap of doc
+   ============================================================ */
+.toc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin-top: 26px; }
+.toc-item {
+    display: flex; gap: 30px; align-items: center; background: var(--bg-panel);
+    border: 1px solid var(--line); border-radius: 18px; padding: 38px 42px;
+    transition: border-color .3s, transform .3s;
+}
+.toc-item:hover { border-color: var(--line-strong); transform: translateX(6px); }
+.toc-num {
+    font-family: var(--font-num); font-weight: 800; font-size: 54px;
+    color: var(--gold); min-width: 90px; line-height: 1;
+    border-right: 2px solid var(--line); padding-right: 28px;
+}
+.toc-tx h3 { font-family: var(--font-display); font-weight: 700; font-size: 32px; color: var(--ink); }
+.toc-tx p { font-size: 20px; color: var(--ink-dim); margin-top: 8px; line-height: 1.45; }
+
+/* ============================================================
+   SLIDE 4 — PRODUCT MATRIX (5 cards)
+   ============================================================ */
+.prod-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; margin-top: 26px; }
+.prod-card {
+    background: linear-gradient(165deg, var(--bg-panel), rgba(17,26,46,0.35));
+    border: 1px solid var(--line); border-radius: 18px; padding: 34px 32px;
+    display: flex; flex-direction: column; gap: 14px; position: relative; overflow: hidden;
+}
+.prod-card.wide { grid-column: span 1; }
+.prod-icn {
+    width: 60px; height: 60px; border-radius: 14px; display: flex; align-items: center; justify-content: center;
+    background: var(--gold-soft); border: 1px solid var(--line-strong); margin-bottom: 6px;
+}
+.prod-icn svg { width: 32px; height: 32px; stroke: var(--gold); fill: none; stroke-width: 1.8; }
+.prod-card h3 { font-family: var(--font-display); font-weight: 700; font-size: 27px; color: var(--ink); }
+.prod-card .pf { font-size: 19px; color: var(--ink-dim); line-height: 1.5; flex: 1; }
+.prod-card .pt { font-size: 17px; color: var(--gold); font-weight: 500; border-top: 1px solid var(--line); padding-top: 14px; }
+
+/* ============================================================
+   SLIDE 5 — CHAT vs COWORK
+   ============================================================ */
+.vs-wrap { display: grid; grid-template-columns: 1fr 130px 1fr; gap: 0; align-items: stretch; margin-top: 30px; }
+.vs-card { background: var(--bg-panel); border: 1px solid var(--line); border-radius: 22px; padding: 50px 48px; }
+.vs-card.blue { border-top: 5px solid var(--blue); }
+.vs-card.gold { border-top: 5px solid var(--gold); }
+.vs-card h3 { font-family: var(--font-display); font-weight: 800; font-size: 38px; margin-bottom: 8px; }
+.vs-card.blue h3 { color: var(--blue); }
+.vs-card.gold h3 { color: var(--gold); }
+.vs-card .vlead { font-size: 21px; color: var(--ink-dim); margin-bottom: 28px; line-height: 1.5; }
+.vs-card ul { list-style: none; display: flex; flex-direction: column; gap: 18px; }
+.vs-card li { font-size: 21px; color: var(--ink); padding-left: 34px; position: relative; line-height: 1.45; }
+.vs-card li::before { content: ""; position: absolute; left: 0; top: 9px; width: 14px; height: 14px; border-radius: 4px; }
+.vs-card.blue li::before { background: var(--blue); }
+.vs-card.gold li::before { background: var(--gold); }
+.vs-mid { display: flex; align-items: center; justify-content: center; }
+.vs-orb {
+    width: 96px; height: 96px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    background: var(--slide-bg); border: 2px solid var(--gold); font-family: var(--font-num);
+    font-weight: 800; font-size: 28px; color: var(--gold); box-shadow: 0 0 40px var(--gold-soft);
+}
+.vs-foot {
+    margin-top: 32px; background: var(--blue-soft); border: 1px solid rgba(91,155,213,0.35);
+    border-radius: 16px; padding: 28px 36px; font-size: 23px; color: var(--ink); line-height: 1.55;
+}
+.vs-foot b { color: var(--blue); }
+
+/* ============================================================
+   SLIDE 6 — THREE BUILDING BLOCKS (stacked)
+   ============================================================ */
+.blocks { display: grid; grid-template-columns: repeat(3,1fr); gap: 30px; margin-top: 30px; }
+.block {
+    background: linear-gradient(170deg, var(--bg-panel), rgba(17,26,46,0.3));
+    border: 1px solid var(--line); border-radius: 20px; padding: 44px 40px; position: relative;
+}
+.block .bnum { position:absolute; top:30px; right:34px; font-family: var(--font-num); font-weight:800; font-size:64px; color: rgba(212,175,106,0.16); line-height:1; }
+.block .bicn { width: 66px; height: 66px; border-radius: 16px; background: var(--gold-soft); border:1px solid var(--line-strong); display:flex; align-items:center; justify-content:center; margin-bottom: 26px; }
+.block .bicn svg { width: 36px; height: 36px; stroke: var(--gold); fill:none; stroke-width: 1.7; }
+.block h3 { font-family: var(--font-display); font-weight: 800; font-size: 32px; color: var(--ink); margin-bottom: 14px; }
+.block p { font-size: 20px; color: var(--ink-dim); line-height: 1.6; }
+.block .btag { display:inline-block; margin-top:18px; font-family: var(--font-num); font-weight:700; font-size:15px; letter-spacing:1px; color: var(--gold); background: var(--gold-soft); padding: 6px 14px; border-radius: 8px; }
+.flow-note { margin-top: 34px; text-align:center; font-size: 22px; color: var(--ink-dim); }
+.flow-note b { color: var(--gold); }
+
+/* ============================================================
+   SLIDE 7 — Subagent + plugin mechanism
+   ============================================================ */
+.mech { display:grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 28px; }
+.mech-card { background: var(--bg-panel); border:1px solid var(--line); border-radius: 20px; padding: 44px; }
+.mech-card h3 { font-family: var(--font-display); font-weight:800; font-size: 32px; color: var(--gold); margin-bottom: 18px; display:flex; align-items:center; gap:14px; }
+.mech-card h3 svg { width: 34px; height:34px; stroke: var(--gold); fill:none; stroke-width:1.7; }
+.mech-card p { font-size: 21px; color: var(--ink-dim); line-height: 1.65; margin-bottom: 16px; }
+.mech-card .hl { color: var(--ink); font-weight: 500; }
+.pkg-diagram { margin-top: 26px; background: rgba(91,155,213,0.07); border:1px dashed rgba(91,155,213,0.4); border-radius:14px; padding: 22px; display:flex; gap:14px; flex-wrap:wrap; }
+.pkg-chip { font-size: 18px; background: var(--bg-panel-2); border:1px solid var(--line); border-radius: 10px; padding: 12px 20px; color: var(--ink); }
+.pkg-chip b { color: var(--blue); }
+
+/* ============================================================
+   SLIDE 8 — 12 PLUGINS GRID
+   ============================================================ */
+.plug-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 22px; margin-top: 22px; }
+.plug {
+    background: var(--bg-panel); border:1px solid var(--line); border-radius: 16px;
+    padding: 24px 24px; display:flex; flex-direction:column; gap:10px; min-height: 168px;
+    transition: border-color .3s, transform .3s;
+}
+.plug:hover { border-color: var(--line-strong); transform: translateY(-4px); }
+.plug-h { display:flex; align-items:center; gap:14px; }
+.plug-icn { width: 42px; height: 42px; border-radius: 11px; background: var(--gold-soft); border:1px solid var(--line-strong); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.plug-icn svg { width: 22px; height:22px; stroke: var(--gold); fill:none; stroke-width:1.9; }
+.plug h4 { font-family: var(--font-display); font-weight:700; font-size: 21px; color: var(--ink); line-height:1.2; }
+.plug p { font-size: 16px; color: var(--ink-faint); line-height: 1.5; }
+
+/* ============================================================
+   SLIDE 9 — 4 WORKFLOWS w/ before-after time
+   ============================================================ */
+.wf-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 28px; margin-top: 22px; }
+.wf {
+    background: linear-gradient(160deg, var(--bg-panel), rgba(17,26,46,0.3));
+    border:1px solid var(--line); border-radius: 18px; padding: 34px 38px;
+}
+.wf-top { display:flex; align-items:center; gap:16px; margin-bottom: 18px; }
+.wf-no { width: 46px; height: 46px; border-radius: 50%; background: var(--gold-soft); border:1px solid var(--line-strong); display:flex; align-items:center; justify-content:center; font-family: var(--font-num); font-weight:800; font-size:22px; color: var(--gold); flex-shrink:0;}
+.wf-top h3 { font-family: var(--font-display); font-weight:700; font-size: 26px; color: var(--ink); }
+.wf p { font-size: 18px; color: var(--ink-dim); line-height: 1.5; margin-bottom: 22px; min-height: 80px; }
+.wf-time { display:flex; align-items:center; gap:18px; }
+.tpill { font-family: var(--font-num); font-weight:800; font-size:24px; padding: 10px 20px; border-radius: 10px; }
+.tpill.before { background: rgba(229,115,115,0.14); color: var(--red); border:1px solid rgba(229,115,115,0.35); text-decoration: line-through; text-decoration-thickness:2px; }
+.tpill.after { background: rgba(123,201,154,0.14); color: var(--green); border:1px solid rgba(123,201,154,0.4); }
+.wf-time svg { width: 30px; height:18px; stroke: var(--gold); fill:none; stroke-width:2; }
+
+/* ============================================================
+   SLIDE 10 — 4 common traits
+   ============================================================ */
+.traits { display:grid; grid-template-columns: repeat(2,1fr); gap: 30px; margin-top: 28px; }
+.trait { display:flex; gap: 28px; background: var(--bg-panel); border:1px solid var(--line); border-radius: 18px; padding: 40px 44px; align-items:flex-start; }
+.trait .ticn { width: 70px; height:70px; border-radius:16px; background: var(--gold-soft); border:1px solid var(--line-strong); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.trait .ticn svg { width:38px; height:38px; stroke:var(--gold); fill:none; stroke-width:1.7; }
+.trait h3 { font-family: var(--font-display); font-weight:700; font-size: 28px; color: var(--ink); margin-bottom: 10px; }
+.trait p { font-size: 20px; color: var(--ink-dim); line-height: 1.6; }
+
+/* ============================================================
+   SLIDE 11 — ROADMAP 3 phases timeline
+   ============================================================ */
+.road { display:grid; grid-template-columns: repeat(3,1fr); gap: 0; margin-top: 40px; position:relative; }
+.road::before { content:""; position:absolute; top: 38px; left: 12%; right: 12%; height: 3px;
+    background: linear-gradient(90deg, var(--blue), var(--gold), var(--teal)); z-index:0; }
+.phase { text-align:center; padding: 0 36px; position:relative; z-index:1; }
+.phase .pdot {
+    width: 78px; height:78px; border-radius:50%; margin: 0 auto 30px;
+    display:flex; align-items:center; justify-content:center; font-family: var(--font-num); font-weight:800; font-size:30px;
+    background: var(--slide-bg); border: 3px solid var(--gold); color: var(--gold);
+    box-shadow: 0 0 36px var(--gold-soft);
+}
+.phase:nth-child(1) .pdot { border-color: var(--blue); color: var(--blue); box-shadow:0 0 36px var(--blue-soft);}
+.phase:nth-child(3) .pdot { border-color: var(--teal); color: var(--teal); box-shadow:0 0 36px rgba(79,209,197,0.14);}
+.phase h3 { font-family: var(--font-display); font-weight:800; font-size: 32px; color: var(--ink); margin-bottom: 6px; }
+.phase .pen { font-family: var(--font-num); font-weight:700; font-size:16px; letter-spacing:2px; color: var(--ink-faint); text-transform:uppercase; margin-bottom: 24px; }
+.phase ul { list-style:none; text-align:left; display:flex; flex-direction:column; gap: 14px; background: var(--bg-panel); border:1px solid var(--line); border-radius:16px; padding: 28px 30px; }
+.phase li { font-size: 18px; color: var(--ink-dim); line-height: 1.45; padding-left: 24px; position:relative; }
+.phase li::before { content:"›"; position:absolute; left:0; color: var(--gold); font-weight:800; font-size:22px; line-height:1; }
+.protip { margin-top: 36px; background: var(--gold-soft); border-left: 4px solid var(--gold); border-radius: 0 14px 14px 0; padding: 22px 32px; font-size: 20px; color: var(--ink); line-height:1.55; }
+.protip b { color: var(--gold); }
+
+/* ============================================================
+   SLIDE 12 — Phase table
+   ============================================================ */
+.ptable { width:100%; border-collapse: separate; border-spacing: 0; margin-top: 30px; }
+.ptable th, .ptable td { text-align:left; padding: 26px 32px; vertical-align: top; }
+.ptable thead th { font-family: var(--font-num); font-weight:800; font-size: 20px; letter-spacing:1px; color: var(--gold); text-transform: uppercase; border-bottom: 2px solid var(--line-strong); }
+.ptable tbody tr { background: var(--bg-panel); }
+.ptable tbody tr:nth-child(even) { background: rgba(17,26,46,0.5); }
+.ptable td.phc { font-family: var(--font-display); font-weight:800; font-size: 26px; }
+.ptable tr:nth-child(1) td.phc { color: var(--blue); }
+.ptable tr:nth-child(2) td.phc { color: var(--gold); }
+.ptable tr:nth-child(3) td.phc { color: var(--teal); }
+.ptable td .pen2 { display:block; font-family: var(--font-num); font-weight:700; font-size:14px; color: var(--ink-faint); letter-spacing:1px; margin-top:4px; }
+.ptable td { font-size: 19px; color: var(--ink-dim); line-height: 1.55; border-bottom: 1px solid var(--line); }
+.ptable tbody tr:first-child td { border-top: none; }
+
+/* ============================================================
+   SLIDE 13 — use-case quadrants
+   ============================================================ */
+.quad { display:grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-top: 24px; }
+.qcard { background: var(--bg-panel); border:1px solid var(--line); border-radius: 18px; padding: 34px 40px; position:relative; }
+.qcard::before { content:""; position:absolute; left:0; top:34px; bottom:34px; width:4px; border-radius:0 4px 4px 0; }
+.qcard.c1::before{background:var(--gold)} .qcard.c2::before{background:var(--blue)}
+.qcard.c3::before{background:var(--teal)} .qcard.c4::before{background:#b794d4}
+.qcard h3 { font-family: var(--font-display); font-weight:800; font-size: 28px; color: var(--ink); margin-bottom: 16px; padding-left: 18px; }
+.qcard ul { list-style:none; display:grid; grid-template-columns: 1fr 1fr; gap: 12px 28px; padding-left: 18px; }
+.qcard li { font-size: 17px; color: var(--ink-dim); line-height:1.4; padding-left:20px; position:relative; }
+.qcard li::before { content:"•"; position:absolute; left:0; color:var(--gold); }
+
+/* ============================================================
+   SLIDE 14 — IT/CIO FAQ
+   ============================================================ */
+.faq-grid { display:grid; grid-template-columns: 1fr 1fr; gap: 22px; margin-top: 22px; }
+.faq { background: var(--bg-panel); border:1px solid var(--line); border-radius: 16px; padding: 28px 32px; }
+.faq .q { display:flex; gap:14px; align-items:flex-start; margin-bottom:12px; }
+.faq .qm { font-family: var(--font-num); font-weight:800; font-size:24px; color: var(--gold); line-height:1; flex-shrink:0; }
+.faq .q span { font-family: var(--font-display); font-weight:700; font-size: 21px; color: var(--ink); line-height:1.35; }
+.faq .a { font-size: 18px; color: var(--ink-dim); line-height: 1.55; padding-left: 38px; }
+.faq .a b { color: var(--green); font-weight:700; }
+.cert-row { margin-top: 24px; display:flex; gap: 18px; }
+.cert { flex:1; text-align:center; background: var(--gold-soft); border:1px solid var(--line-strong); border-radius:14px; padding: 20px; }
+.cert b { display:block; font-family: var(--font-num); font-weight:800; font-size:22px; color: var(--gold); }
+.cert span { font-size:16px; color: var(--ink-dim); }
+
+/* ============================================================
+   SLIDE 15 — closing + resources
+   ============================================================ */
+.close-wrap { display:flex; flex-direction:column; justify-content:center; height:100%; padding: 0 40px; }
+.close-wrap h2 { font-family: var(--font-display); font-weight:900; font-size: 78px; line-height:1.1;
+    background: linear-gradient(120deg,#fff 30%, var(--gold)); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; margin-bottom: 26px; }
+.close-lead { font-size: 26px; color: var(--ink-dim); line-height:1.6; max-width: 1200px; margin-bottom: 48px; }
+.res-grid { display:grid; grid-template-columns: repeat(2,1fr); gap: 22px; max-width: 1500px; }
+.res { display:flex; gap:20px; align-items:center; background: var(--bg-panel); border:1px solid var(--line); border-radius:14px; padding: 26px 30px; }
+.res svg { width: 34px; height:34px; stroke: var(--gold); fill:none; stroke-width:1.7; flex-shrink:0; }
+.res-tx h4 { font-size:22px; color:var(--ink); font-weight:700; font-family: var(--font-display); }
+.res-tx p { font-size:17px; color:var(--ink-faint); margin-top:4px; }
+.close-foot { margin-top: 50px; font-size: 22px; color: var(--ink-dim); }
+.close-foot b { color: var(--gold); }
+
+/* === EDIT MODE & CONTROLS === */
+.edit-hotzone { position: fixed; top:0; left:0; width:80px; height:80px; z-index:10000; cursor:pointer; }
+.edit-toggle { position: fixed; top: 20px; left: 20px; z-index:10001; width:52px; height:52px; border-radius:12px;
+    border:1px solid var(--line-strong); background: var(--bg-panel); color: var(--gold); font-size:22px; cursor:pointer;
+    opacity:0; pointer-events:none; transition: opacity .3s ease; }
+.edit-toggle.show, .edit-toggle.active { opacity:1; pointer-events:auto; }
+.edit-toggle.active { background: var(--gold); color: var(--slide-bg); }
+.deck-controls { display:flex; gap:14px; align-items:center; background: rgba(10,15,28,0.8); backdrop-filter: blur(10px);
+    border:1px solid var(--line); border-radius: 999px; padding: 10px 20px; }
+.deck-controls button { background:none; border:none; color: var(--ink-dim); font-size: 22px; cursor:pointer; padding: 4px 8px; transition: color .2s; }
+.deck-controls button:hover { color: var(--gold); }
+.deck-controls .pc { font-family: var(--font-num); font-weight:700; font-size:16px; color: var(--ink); min-width: 70px; text-align:center; }
+.progress-bar { position: fixed; top:0; left:0; height: 4px; background: var(--gold); z-index: 1000; transition: width .4s var(--ease); }
+</style>
+</head>
+<body>
+<div class="progress-bar" id="progressBar"></div>
+<div class="deck-viewport">
+<main class="deck-stage" id="deckStage">
+
+<!-- ============================ SLIDE 1: COVER ============================ -->
+<section class="slide cover active">
+    <div class="cover-glow"></div>
+    <svg class="cover-rings" width="360" height="360" viewBox="0 0 360 360">
+        <circle cx="180" cy="180" r="160" fill="none" stroke="rgba(212,175,106,0.25)" stroke-width="1"/>
+        <circle cx="180" cy="180" r="118" fill="none" stroke="rgba(91,155,213,0.25)" stroke-width="1"/>
+        <circle cx="180" cy="180" r="76" fill="none" stroke="rgba(212,175,106,0.4)" stroke-width="1"/>
+    </svg>
+    <div class="cover-tag reveal">Claude for the Legal Industry</div>
+    <h1 class="reveal">Claude 法律行业<br>实用部署指南</h1>
+    <div class="cover-en reveal">A Practical Deployment Guide · 译自 Anthropic 官方手册</div>
+    <div class="cover-rule reveal"></div>
+    <div class="cover-meta reveal">
+        面向<b>律所与企业法务部</b>的代理式 AI 落地路线图<br>
+        产品总览 · 真实工作流 · 三阶段推广 · 安全合规问答
+    </div>
+</section>
+
+<!-- ============================ SLIDE 2: INFLECTION / STATS ============================ -->
+<section class="slide">
+    <div class="kicker reveal">行业拐点</div>
+    <h2 class="s-title reveal">法律行业正站在 AI 采纳的临界点上</h2>
+    <p class="s-sub reveal">事项更复杂、客户要更快、招人更难——而代理式 AI 已从新奇事物成熟为能同时应对这三大挑战的实用工具。</p>
+
+    <div class="stat-row reveal stagger">
+        <div class="stat-card">
+            <div class="stat-big">83<small>%</small></div>
+            <div class="stat-label">摘要总结<br>法务部最广泛使用的 GenAI 场景</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-big">63<small>%</small></div>
+            <div class="stat-label">合同条款识别<br>第二大高频应用</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-big">53<small>%</small></div>
+            <div class="stat-label">转写<br>第三大高频应用</div>
+        </div>
+    </div>
+
+    <div class="trend-wrap reveal">
+        <div class="trend-title">总法律顾问（CLO）群体的<span>生成式 AI 使用率</span>—— 三年跃升</div>
+        <div class="bars">
+            <div class="bar-col"><div class="bar" style="--h:60px"><span class="bv">20%</span></div><div class="bar-yr">2023</div></div>
+            <div class="bar-col"><div class="bar" style="--h:132px"><span class="bv">44%</span></div><div class="bar-yr">2025</div></div>
+            <div class="bar-col"><div class="bar" style="--h:240px"><span class="bv">87%</span></div><div class="bar-yr">2026</div></div>
+        </div>
+    </div>
+    <div class="brandmark">Claude 法律行业部署指南</div>
+    <div class="pagenum">02 / 15</div>
+</section>
+
+<!-- ============================ SLIDE 3: TABLE OF CONTENTS ============================ -->
+<section class="slide">
+    <div class="kicker reveal">全文导览</div>
+    <h2 class="s-title reveal">本指南讲什么</h2>
+    <p class="s-sub reveal">从产品形态、真实工作流，到三阶段落地路线图与安全合规问答——一套可直接照做的部署框架。</p>
+    <div class="toc-grid stagger">
+        <div class="toc-item"><div class="toc-num">01</div><div class="toc-tx"><h3>产品总览</h3><p>五款产品形态 + 连接器 / Skill / 插件三块积木</p></div></div>
+        <div class="toc-item"><div class="toc-num">02</div><div class="toc-tx"><h3>Anthropic 法务团队如何用 Claude</h3><p>四个嵌入日常的真实工作流与量化收益</p></div></div>
+        <div class="toc-item"><div class="toc-num">03</div><div class="toc-tx"><h3>法律行业落地路线图</h3><p>地基 → 试点 → 规模化 三阶段推广 playbook</p></div></div>
+        <div class="toc-item"><div class="toc-num">04</div><div class="toc-tx"><h3>从这里开始</h3><p>执业场景全景、IT 安全问答、资源清单</p></div></div>
+    </div>
+    <div class="brandmark">Claude 法律行业部署指南</div>
+    <div class="pagenum">03 / 15</div>
+</section>
+
+<!-- ============================ SLIDE 4: PRODUCT MATRIX ============================ -->
+<section class="slide">
+    <div class="kicker reveal">第 1 章 · 产品总览</div>
+    <h2 class="s-title reveal">五款产品形态：什么场景该用哪个</h2>
+    <div class="prod-grid stagger">
+        <div class="prod-card">
+            <div class="prod-icn"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+            <h3>Claude Chat</h3>
+            <div class="pf">对话式检索与起草。装得进一次对话的零碎任务——提问、摘要、就地起草。新用户的第一站。</div>
+            <div class="pt">浏览器 / 桌面 / 手机</div>
+        </div>
+        <div class="prod-card">
+            <div class="prod-icn"><svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></div>
+            <h3>Claude Cowork</h3>
+            <div class="pf">桌面应用，跨本地文件与接入应用完成多步骤事项。可在一项任务上跑数分钟到数小时。</div>
+            <div class="pt">事项级 · 跨文件跨应用</div>
+        </div>
+        <div class="prod-card">
+            <div class="prod-icn"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg></div>
+            <h3>Claude for Microsoft 365</h3>
+            <div class="pf">在 Word/Outlook/Excel/PPT 内就地修订合同、转 memo；上下文跨整个 365 套件传递。</div>
+            <div class="pt">加载项 + M365 连接器</div>
+        </div>
+        <div class="prod-card">
+            <div class="prod-icn"><svg viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></div>
+            <h3>Claude Platform（API）</h3>
+            <div class="pf">面向自建应用的 API。把 Claude 嵌入 CLM、e-discovery、事项管理等内部软件。</div>
+            <div class="pt">Bedrock / Vertex / Foundry</div>
+        </div>
+        <div class="prod-card">
+            <div class="prod-icn"><svg viewBox="0 0 24 24"><path d="M12 2 4 6v6c0 5 3.4 8.5 8 10 4.6-1.5 8-5 8-10V6z"/></svg></div>
+            <h3>Claude Managed Agents</h3>
+            <div class="pf">把自建 agent 交由 Anthropic 托管运行——长会话、范围化权限、审计轨迹全包。</div>
+            <div class="pt">如：NDA 分流 Agent</div>
+        </div>
+        <div class="prod-card" style="background:linear-gradient(160deg, var(--gold-soft), rgba(17,26,46,0.3)); border-color:var(--line-strong);">
+            <div class="prod-icn" style="background:rgba(212,175,106,0.25)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 6v6m11-7h-6m-6 0H1"/></svg></div>
+            <h3 style="color:var(--gold)">如何选？</h3>
+            <div class="pf" style="color:var(--ink)">白天用 <b style="color:var(--blue)">Chat</b> 解决零碎问题；把吃掉一下午的事项级工作<b style="color:var(--gold)">"派"给 Cowork</b>，事后审阅结果。</div>
+            <div class="pt">大多数律师两者都用</div>
+        </div>
+    </div>
+    <div class="brandmark">Claude 法律行业部署指南</div>
+    <div class="pagenum">04 / 15</div>
+</section>
+
+<!-- ============================ SLIDE 5: CHAT vs COWORK ============================ -->
+<section class="slide">
+    <div class="kicker reveal">第 1 章 · 选型决策</div>
+    <h2 class="s-title reveal">Claude Chat 还是 Claude Cowork？</h2>
+    <div class="vs-wrap reveal">
+        <div class="vs-card blue">
+            <h3>Claude Chat</h3>
+            <div class="vlead">"当下"向 Claude 提问、和它一起工作</div>
+            <ul>
+                <li>一次性、装得进单次对话的任务</li>
+                <li>提问 / 检索摘要 / 就地起草一段文字</li>
+                <li>每次对话独立，不适合长期跟进的事项</li>
+                <li>新用户的第一站</li>
+            </ul>
+        </div>
+        <div class="vs-mid"><div class="vs-orb">VS</div></div>
+        <div class="vs-card gold">
+            <h3>Claude Cowork</h3>
+            <div class="vlead">把一个项目"派"给 Claude，事后审阅</div>
+            <ul>
+                <li>横跨多文件、多应用、多步骤的事项</li>
+                <li>审阅整个数据室合同 / playbook 比对</li>
+                <li>可跑数分钟到数小时，由律师审阅产出</li>
+                <li>接 iManage / NetDocuments / Box / M365</li>
+            </ul>
+        </div>
+    </div>
+    <div class="vs-foot reveal">同一个工具，<b>上午帮你修订 NDA，下午就能清空收件箱、为明天的取证做准备</b>——Cowork 尤其擅长这种多应用、多步骤的"工作开销"。</div>
+    <div class="brandmark">Claude 法律行业部署指南</div>
+    <div class="pagenum">05 / 15</div>
+</section>
+
+<!-- ============================ SLIDE 6: THREE BUILDING BLOCKS ============================ -->
+<section class="slide">
+    <div class="kicker reveal">第 1 章 · 定制 Claude</div>
+    <h2 class="s-title reveal">三块积木：把通用 Claude 变成"属于本机构的 Claude"</h2>
+    <div class="blocks stagger">
+        <div class="block">
+            <div class="bnum">01</div>
+            <div class="bicn"><svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg></div>
+            <h3>连接器 Connectors</h3>
+            <p>通过 MCP 开放标准让 Claude 直接查询提供方系统，而非基于上传副本工作——保密性与执业特权端到端保留。</p>
+            <span class="btag">访问事项数据</span>
+        </div>
+        <div class="block">
+            <div class="bnum">02</div>
+            <div class="bicn"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h4"/></svg></div>
+            <h3>Skill 技能</h3>
+            <p>可复用、被编码的工作流，教 Claude 用一致方式完成特定任务。承载律所 playbook 与后备立场，Markdown 即可写成。</p>
+            <span class="btag">统一做事方式</span>
+        </div>
+        <div class="block">
+            <div class="bicn"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div>
+            <div class="bnum">03</div>
+            <h3>插件 Plugins</h3>
+            <p>把 Skill、子代理、连接器捆成一个可安装包，对应一个执业领域。Anthropic 自建插件全部开源，可原样装或 fork 换上自家 playbook。</p>
+            <span class="btag">执业领域整包</span>
+        </div>
+    </div>
+    <div class="flow-note reveal">连接器 <b>让它看得见数据</b> · Skill <b>教它怎么做</b> · 插件 <b>把整套能力打包发放</b></div>
+    <div class="brandmark">Claude 法律行业部署指南</div>
+    <div class="pagenum">06 / 15</div>
+</section>
+
+<!-- ============================ SLIDE 7: SUBAGENT + PLUGIN ============================ -->
+<section class="slide">
+    <div class="kicker reveal">第 1 章 · 进阶机制</div>
+    <h2 class="s-title reveal">子代理与插件：如何安全地扩展能力</h2>
+    <div class="mech reveal">
+        <div class="mech-card">
+            <h3><svg viewBox="0 0 24 24"><circle cx="12" cy="7" r="4"/><path d="M5.5 21a6.5 6.5 0 0 1 13 0"/></svg>子代理 Subagents</h3>
+            <p>如果说 Skill 告诉 Claude <span class="hl">"怎么做"</span>，子代理就是在<span class="hl">独立上下文窗口</span>、用自己的系统提示词与工具权限运行的"职责狭窄助手"。</p>
+            <p>完成一个有边界的任务（核对引证、抽取条款、审核术语）后回报。既能避免长事项把单一上下文压爆，也能在敏感系统环节施加<span class="hl">更严格的工具限制</span>。</p>
+        </div>
+        <div class="mech-card">
+            <h3><svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>插件即"执业领域整包"</h3>
+            <p>插件把以下三类能力捆成<span class="hl">一个可安装包</span>，让一个执业领域开箱即带上"该有的好帮手"：</p>
+            <div class="pkg-diagram">
+                <div class="pkg-chip"><b>Skill</b> · 怎么做</div>
+                <div class="pkg-chip"><b>子代理</b> · 委派助手</div>
+                <div class="pkg-chip"><b>连接器</b> · 接数据</div>
+                <div class="pkg-chip"><b>审批流</b> · fork 自定义</div>
+            </div>
+            <p style="margin-top:18px">合作伙伴插件则把<span class="hl">专有数据、供应商定制 Skill</span> 引入 Claude。</p>
+        </div>
+    </div>
+    <div class="brandmark">Claude 法律行业部署指南</div>
+    <div class="pagenum">07 / 15</div>
+</section>
+
+<!-- ============================ SLIDE 8: 12 PLUGINS ============================ -->
+<section class="slide">
+    <div class="kicker reveal">第 1 章 · 插件清单</div>
+    <h2 class="s-title reveal">面向法律专业人员的执业领域插件</h2>
+    <p class="s-sub reveal">每一类角色都能以插件形式跑在 Cowork 与 M365 加载项里，全程"人在回路"——律师在产出向下游流转前审阅并批准。</p>
+    <div class="plug-grid stagger">
+        <div class="plug"><div class="plug-h"><div class="plug-icn"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg></div><h4>商法</h4></div><p>供应商协议 / NDA / SaaS 审阅，按买卖方立场处理，跟踪续约与升级</p></div>
+        <div class="plug"><div class="plug-h"><div class="plug-icn"><svg viewBox="0 0 24 24"><path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-3"/></svg></div><h4>公司法</h4></div><p>并购尽调、披露清单、董事决议、交割清单、表格化审阅</p></div>
+        <div class="plug"><div class="plug-h"><div class="plug-icn"><svg viewBox="0 0 24 24"><circle cx="12" cy="7" r="4"/><path d="M5.5 21a6.5 6.5 0 0 1 13 0"/></svg></div><h4>劳动法</h4></div><p>辖区感知：雇佣解雇审阅、工人分类、假期跟踪、调查、政策起草</p></div>
+        <div class="plug"><div class="plug-h"><div class="plug-icn"><svg viewBox="0 0 24 24"><path d="M12 2 4 6v6c0 5 3.4 8.5 8 10 4.6-1.5 8-5 8-10V6z"/></svg></div><h4>隐私法</h4></div><p>DPA 审阅、PIA/DPIA 分流、按法定时限起草 DSAR 答复、偏离监控</p></div>
+        <div class="plug"><div class="plug-h"><div class="plug-icn"><svg viewBox="0 0 24 24"><path d="M2 3h20v14H2z"/><path d="M8 21h8M12 17v4"/></svg></div><h4>产品法</h4></div><p>按框架审阅发布、核查宣传可佐证性、"我们能做吗"分流</p></div>
+        <div class="plug"><div class="plug-h"><div class="plug-icn"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div><h4>合规监管</h4></div><p>监管动态监控、按阈值过滤、新规与政策库 diff、gap 跟踪</p></div>
+        <div class="plug"><div class="plug-h"><div class="plug-icn"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 2"/></svg></div><h4>AI 治理</h4></div><p>AI 用例分流、影响评估、供应商 AI 条款审阅、政策起草入门</p></div>
+        <div class="plug"><div class="plug-h"><div class="plug-icn"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg></div><h4>知识产权</h4></div><p>商标查询清除、FTO 分流、C&D 函、DMCA 下架、组合管理</p></div>
+        <div class="plug"><div class="plug-h"><div class="plug-icn"><svg viewBox="0 0 24 24"><path d="M3 3v18h18M7 14l4-4 3 3 5-6"/></svg></div><h4>诉讼</h4></div><p>立案、组合追踪、法律保留、传票分流、时间轴、claim chart、brief</p></div>
+        <div class="plug"><div class="plug-h"><div class="plug-icn"><svg viewBox="0 0 24 24"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg></div><h4>法学院学生</h4></div><p>苏格拉底式追问、判例摘要、IRAC 评分、含辖区差异的司考备考</p></div>
+        <div class="plug"><div class="plug-h"><div class="plug-icn"><svg viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg></div><h4>法律诊所</h4></div><p>当事人立案、截止日跟踪、案件 memo、督导审阅队列、教学旋钮</p></div>
+        <div class="plug"><div class="plug-h"><div class="plug-icn"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 17h7"/></svg></div><h4>Legal Builder Hub</h4></div><p>从注册表找/审/装/更新社区 Skill，过安全审查——开源生态的信任层</p></div>
+    </div>
+    <div class="brandmark">Claude 法律行业部署指南</div>
+    <div class="pagenum">08 / 15</div>
+</section>
+
+<!-- ============================ SLIDE 9: 4 WORKFLOWS ============================ -->
+<section class="slide">
+    <div class="kicker reveal">第 2 章 · 真实工作流</div>
+    <h2 class="s-title reveal">Anthropic 法务团队如何用 Claude</h2>
+    <p class="s-sub reveal">四个嵌入日常的工作流，都瞄准"形态标准、由律师在下游流转前审阅"的工作——可量化的时间节省。</p>
+    <div class="wf-grid stagger">
+        <div class="wf">
+            <div class="wf-top"><div class="wf-no">1</div><h3>市场内容审阅</h3></div>
+            <p>GTM 同事提交前先自检：Claude 用承载法务历史指引的 Skill 标出公开权、夸大宣称、统计准确性问题并分级。</p>
+            <div class="wf-time"><span class="tpill before">2~3 天</span><svg viewBox="0 0 30 18"><path d="M0 9h26M20 3l6 6-6 6"/></svg><span class="tpill after">24 小时</span></div>
+        </div>
+        <div class="wf">
+            <div class="wf-top"><div class="wf-no">2</div><h3>外部商业活动审查</h3></div>
+            <p>员工填表，Claude 对照 COI 政策框架分析、需要时主动追问细节，再通过 Slack 把审批建议发给律师——抵达队列时分析已做完。</p>
+            <div class="wf-time"><span class="tpill before">多轮往复</span><svg viewBox="0 0 30 18"><path d="M0 9h26M20 3l6 6-6 6"/></svg><span class="tpill after">一次到位</span></div>
+        </div>
+        <div class="wf">
+            <div class="wf-top"><div class="wf-no">3</div><h3>隐私影响评估 PIA</h3></div>
+            <p>通过 MCP 连到装满历史 PIA 的 Drive，配合承载"律所格式与必看问题"的 Skill，读过往评估、套标准关注点、起草新 PIA。</p>
+            <div class="wf-time"><span class="tpill before">2 小时</span><svg viewBox="0 0 30 18"><path d="M0 9h26M20 3l6 6-6 6"/></svg><span class="tpill after">30 分钟</span></div>
+        </div>
+        <div class="wf">
+            <div class="wf-top"><div class="wf-no">4</div><h3>合同修订 Redlining</h3></div>
+            <p>在 Google Docs / M365 里对比版本、高亮变更、从商法 playbook 给出推荐措辞，实时以评论形式建议修改。</p>
+            <div class="wf-time"><span class="tpill before">数小时</span><svg viewBox="0 0 30 18"><path d="M0 9h26M20 3l6 6-6 6"/></svg><span class="tpill after">数分钟</span></div>
+        </div>
+    </div>
+    <div class="brandmark">Claude 法律行业部署指南</div>
+    <div class="pagenum">09 / 15</div>
+</section>
+
+<!-- ============================ SLIDE 10: 4 COMMON TRAITS ============================ -->
+<section class="slide">
+    <div class="kicker reveal">第 2 章 · 共同规律</div>
+    <h2 class="s-title reveal">四个工作流的共同点：可复制的成功模式</h2>
+    <div class="traits stagger">
+        <div class="trait">
+            <div class="ticn"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg></div>
+            <div><h3>都是形态标准的工作</h3><p>挑选文档密集、格式可预期的任务——这是 AI 最先能稳定加速的环节，而非新颖高风险事项。</p></div>
+        </div>
+        <div class="trait">
+            <div class="ticn"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg></div>
+            <div><h3>靠 Skill 把 know-how 编码</h3><p>团队的隐性经验被写进可复用 Skill——一致性、监督性、准确性从此不再依赖个人记忆。</p></div>
+        </div>
+        <div class="trait">
+            <div class="ticn"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 0 20" fill="rgba(212,175,106,0.3)" stroke="none"/><path d="M12 12V2"/></svg></div>
+            <div><h3>Claude 跑前 80%，律师管 20%</h3><p>AI 完成繁重的起草，律师把时间专注在真正需要专业判断的那 20%。</p></div>
+        </div>
+        <div class="trait">
+            <div class="ticn"><svg viewBox="0 0 24 24"><path d="M3 3v18h18M7 14l4-4 3 3 5-6"/></svg></div>
+            <div><h3>用可量化时间节省衡量价值</h3><p>2~3 天 → 24 小时；2 小时 → 30 分钟；数小时 → 数分钟——价值看得见、说得清。</p></div>
+        </div>
+    </div>
+    <div class="brandmark">Claude 法律行业部署指南</div>
+    <div class="pagenum">10 / 15</div>
+</section>
+
+<!-- ============================ SLIDE 11: ROADMAP 3 PHASES ============================ -->
+<section class="slide">
+    <div class="kicker reveal">第 3 章 · 落地路线图</div>
+    <h2 class="s-title reveal">三阶段推广节奏：先打地基，再聚焦试点，最后规模化</h2>
+    <div class="road reveal stagger">
+        <div class="phase">
+            <div class="pdot">1</div>
+            <h3>打地基</h3>
+            <div class="pen">Foundation</div>
+            <ul>
+                <li>铺设访问与连接器：API / Bedrock / Vertex / Foundry</li>
+                <li>配齐 SSO、SCIM、审计日志、自定义保留</li>
+                <li>治理并行：法律保留、特权保护、隐私审查</li>
+                <li>用 Claude 分析工单，破解"冷启动"</li>
+            </ul>
+        </div>
+        <div class="phase">
+            <div class="pdot">2</div>
+            <h3>试点</h3>
+            <div class="pen">Pilot</div>
+            <ul>
+                <li>先锋用真实事项数据跑真实工作流</li>
+                <li>按既定标准衡量：时间节省 + 采用率</li>
+                <li>上线顺序：Skill/插件 → M365 加载项 → Cowork</li>
+                <li>每周短会，及时捕获引证幻觉、辖区差异</li>
+            </ul>
+        </div>
+        <div class="phase">
+            <div class="pdot">3</div>
+            <h3>规模化</h3>
+            <div class="pen">Scale</div>
+            <ul>
+                <li>经管理员市场把插件铺给更多团队</li>
+                <li>新员工入职第一天即用编码好的工作流</li>
+                <li>Skill 跨执业领域复用，产生复利</li>
+                <li>就治理框架达成全所共识</li>
+            </ul>
+        </div>
+    </div>
+    <div class="protip reveal"><b>Pro-tip：</b>让先锋第一次会话就拿到价值——打开 Cowork 输入 <b>/nda-triage</b>，90 秒得到一份干净修订稿，他大概率还会回来。</div>
+    <div class="brandmark">Claude 法律行业部署指南</div>
+    <div class="pagenum">11 / 15</div>
+</section>
+
+<!-- ============================ SLIDE 12: PHASE TABLE ============================ -->
+<section class="slide">
+    <div class="kicker reveal">第 3 章 · 阶段对照</div>
+    <h2 class="s-title reveal">每个阶段：做什么 · 会看到什么现象</h2>
+    <table class="ptable reveal">
+        <thead><tr><th style="width:18%">阶段</th><th style="width:44%">行动</th><th style="width:38%">现象（成功信号）</th></tr></thead>
+        <tbody>
+            <tr>
+                <td class="phc">地基<span class="pen2">FOUNDATION</span></td>
+                <td>安全与特权审查；锁定 2~3 个先锋团队；安装预置插件；接入 1~2 个核心系统（iManage / NetDocuments、Thomson Reuters / Ironclad）。</td>
+                <td>先锋开始反馈用例；出现首批"这帮我省了一小时"的时刻。</td>
+            </tr>
+            <tr>
+                <td class="phc">试点<span class="pen2">PILOT</span></td>
+                <td>先锋跑真实工作流；每周短会；按既定标准衡量；向邻近执业组展示战果。</td>
+                <td>可量化的时间节省；先锋开始自建并分享 Skill；其他团队主动来要。</td>
+            </tr>
+            <tr>
+                <td class="phc">规模化<span class="pen2">SCALE</span></td>
+                <td>管理员配发的插件市场；把试点学习编码为全所通用 Skill；上线下一波用户。</td>
+                <td>Skill 跨执业领域共享；新员工依靠编码好的工作流爬坡；"这事怎么做？"类支持工单逐步下降。</td>
+            </tr>
+        </tbody>
+    </table>
+    <div class="brandmark">Claude 法律行业部署指南</div>
+    <div class="pagenum">12 / 15</div>
+</section>
+
+<!-- ============================ SLIDE 13: USE CASE QUADRANTS ============================ -->
+<section class="slide">
+    <div class="kicker reveal">第 3 章 · 场景全景</div>
+    <h2 class="s-title reveal">各类执业与垂直场景用例</h2>
+    <p class="s-sub reveal">最先拿给 Claude 做的，通常是文档密集、形态标准、上线前有人审阅的工作——Claude 承担起草，审阅人专注判断。</p>
+    <div class="quad stagger">
+        <div class="qcard c1">
+            <h3>公司内部法务 In-house</h3>
+            <ul><li>按 playbook 合同审阅修订</li><li>NDA 分流与对手方审阅</li><li>隐私影响评估 / DSAR</li><li>外部律师计费审阅</li><li>营销文案 / 功能审阅</li><li>董事会材料与治理</li></ul>
+        </div>
+        <div class="qcard c2">
+            <h3>诉讼与争议 Litigation</h3>
+            <ul><li>证据开示审阅与特权编码</li><li>取证准备与证人摘要</li><li>Brief 起草与引证核查</li><li>答辩文件分析</li><li>动议起草</li><li>专家报告审阅</li></ul>
+        </div>
+        <div class="qcard c3">
+            <h3>交易 Transactional</h3>
+            <ul><li>并购尽调审阅与摘要 memo</li><li>Pitch book 准备</li><li>竞争 / 可比交易分析</li><li>CIM 与发售文件起草</li><li>交割清单跟踪</li><li>格式标准文档加速</li></ul>
+        </div>
+        <div class="qcard c4">
+            <h3>合规与监管 Compliance</h3>
+            <ul><li>监管申报准备与审阅</li><li>审计响应与差距分析</li><li>政策起草与跨辖区比较</li><li>AI 治理与供应商审阅</li><li>KYC / AML 筛查升级</li><li>受监管辖区时效保障</li></ul>
+        </div>
+    </div>
+    <div class="brandmark">Claude 法律行业部署指南</div>
+    <div class="pagenum">13 / 15</div>
+</section>
+
+<!-- ============================ SLIDE 14: IT/CIO FAQ ============================ -->
+<section class="slide">
+    <div class="kicker reveal">第 4 章 · 安全合规</div>
+    <h2 class="s-title reveal">面向 CIO 与 IT 负责人的常见问答</h2>
+    <div class="faq-grid stagger">
+        <div class="faq">
+            <div class="q"><span class="qm">Q</span><span>我们的数据会被拿去训练模型吗？</span></div>
+            <div class="a"><b>不会。</b>Anthropic 不用 Claude.ai / Cowork 上 Enterprise Plan 账户的输入或输出做训练。</div>
+        </div>
+        <div class="faq">
+            <div class="q"><span class="qm">Q</span><span>支持零数据保留（ZDR）吗？</span></div>
+            <div class="a">Platform（API）与 Code 对已审批客户<b>可用</b>；Claude.ai / Cowork 为有状态产品，支持自定义保留窗口，可短到 30 天。</div>
+        </div>
+        <div class="faq">
+            <div class="q"><span class="qm">Q</span><span>律师-客户特权如何保护？</span></div>
+            <div class="a">连接器<b>尊重 DMS / 事项系统已配置的访问控制</b>，不用客户数据训练，企业版支持自定义保留；律所通常再叠加自家处理政策。</div>
+        </div>
+        <div class="faq">
+            <div class="q"><span class="qm">Q</span><span>支持哪些身份与访问控制？</span></div>
+            <div class="a">SAML SSO、SCIM 用户预置、RBAC 角色化访问，以及<b>管理员管控的插件市场</b>。</div>
+        </div>
+        <div class="faq">
+            <div class="q"><span class="qm">Q</span><span>Cowork 如何访问本地文件？</span></div>
+            <div class="a">只读取用户<b>显式授权</b>的文件夹，按用户范围控制，<b>不在后台索引硬盘</b>。</div>
+        </div>
+        <div class="faq">
+            <div class="q"><span class="qm">Q</span><span>部署在哪里？要装什么？</span></div>
+            <div class="a">Anthropic 托管 SaaS；需留云边界内则经 Bedrock/Vertex/Foundry 自建。Cowork 为签名桌面应用，<b>可经 MDM 管理</b>。</div>
+        </div>
+    </div>
+    <div class="cert-row reveal">
+        <div class="cert"><b>ISO/IEC 42001:2023</b><span>负责任 AI 管理认证</span></div>
+        <div class="cert"><b>SOC 2 Type II</b><span>通过审计</span></div>
+        <div class="cert"><b>trust.anthropic.com</b><span>子处理者清单 / 信任中心</span></div>
+    </div>
+    <div class="brandmark">Claude 法律行业部署指南</div>
+    <div class="pagenum">14 / 15</div>
+</section>
+
+<!-- ============================ SLIDE 15: CLOSING + RESOURCES ============================ -->
+<section class="slide">
+    <div class="cover-glow" style="left:-220px; top:auto; bottom:-260px; right:auto;"></div>
+    <div class="close-wrap">
+        <div class="kicker reveal">第 4 章 · 从这里开始</div>
+        <h2 class="reveal">现在，就把它<br>稳妥地用起来</h2>
+        <p class="close-lead reveal">面向法律行业的 Claude 生态——连接器、插件、合作伙伴 MCP 应用、预置 agent 角色，全部跑在监管所需的企业级控制之上：SSO、SCIM、审计日志、自定义保留、ISO/IEC 42001 认证。</p>
+        <div class="res-grid reveal stagger">
+            <div class="res"><svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg><div class="res-tx"><h4>Claude.com 法律教程</h4><p>合同审阅、NDA 分流、检索、插件安装的步步走指南</p></div></div>
+            <div class="res"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><div class="res-tx"><h4>Claude Skill 目录</h4><p>自建前先看有没有现成法律 Skill 可用</p></div></div>
+            <div class="res"><svg viewBox="0 0 24 24"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.9a3.4 3.4 0 0 0-1-2.6c3.1-.4 6.4-1.5 6.4-7A5.4 5.4 0 0 0 20 4.8 5 5 0 0 0 19.9 1S18.7.6 16 2.5a13.4 13.4 0 0 0-7 0C6.3.6 5.1 1 5.1 1A5 5 0 0 0 5 4.8 5.4 5.4 0 0 0 3.6 8.5c0 5.5 3.3 6.6 6.4 7a3.4 3.4 0 0 0-1 2.6V22"/></svg><div class="res-tx"><h4>开源法律插件仓库</h4><p>Anthropic 在 GitHub 发布本指南所涉插件</p></div></div>
+            <div class="res"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><div class="res-tx"><h4>博客：How Anthropic uses Claude</h4><p>详述自家法务在 PIA、内容审阅、修订中的日常用法</p></div></div>
+        </div>
+        <div class="close-foot reveal">联系 Anthropic 客户团队：<b>sales@anthropic.com</b> &nbsp;·&nbsp; 中文译版 · 法律元力出品 · yuanli.ailaw.cn</div>
+    </div>
+</section>
+
+</main>
+</div>
+
+<!-- EDIT MODE -->
+<div class="edit-hotzone"></div>
+<button class="edit-toggle" id="editToggle" title="编辑模式 (E)">✏️</button>
+
+<!-- CONTROLS -->
+<div class="deck-controls">
+    <button id="prevBtn" title="上一页 (←)">‹</button>
+    <span class="pc" id="pageCount">1 / 15</span>
+    <button id="nextBtn" title="下一页 (→)">›</button>
+</div>
+
+<script>
+/* ===========================================
+   SLIDE PRESENTATION CONTROLLER
+   =========================================== */
+class SlidePresentation {
+    constructor() {
+        this.slides = document.querySelectorAll('.slide');
+        this.currentSlide = 0;
+        this.stage = document.getElementById('deckStage');
+        this.progressBar = document.getElementById('progressBar');
+        this.pageCount = document.getElementById('pageCount');
+        this.setupStageScale();
+        this.setupKeyboardNav();
+        this.setupTouchNav();
+        this.setupWheelNav();
+        this.setupButtons();
+        this.showSlide(0);
+    }
+    setupStageScale() {
+        const scale = () => {
+            const factor = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+            const x = (window.innerWidth - 1920 * factor) / 2;
+            const y = (window.innerHeight - 1080 * factor) / 2;
+            this.stage.style.transform = `translate(${x}px, ${y}px) scale(${factor})`;
+        };
+        scale();
+        window.addEventListener('resize', scale);
+    }
+    setupKeyboardNav() {
+        document.addEventListener('keydown', (e) => {
+            if (e.target.getAttribute('contenteditable')) return;
+            if (['ArrowRight','ArrowDown',' ','PageDown'].includes(e.key)) { e.preventDefault(); this.next(); }
+            else if (['ArrowLeft','ArrowUp','PageUp'].includes(e.key)) { e.preventDefault(); this.prev(); }
+            else if (e.key === 'Home') this.showSlide(0);
+            else if (e.key === 'End') this.showSlide(this.slides.length - 1);
+        });
+    }
+    setupTouchNav() {
+        let sx = 0;
+        document.addEventListener('touchstart', (e) => { sx = e.touches[0].clientX; }, {passive:true});
+        document.addEventListener('touchend', (e) => {
+            const dx = e.changedTouches[0].clientX - sx;
+            if (Math.abs(dx) > 60) { dx < 0 ? this.next() : this.prev(); }
+        }, {passive:true});
+    }
+    setupWheelNav() {
+        let lock = false;
+        window.addEventListener('wheel', (e) => {
+            if (lock) return;
+            if (Math.abs(e.deltaY) < 30) return;
+            lock = true;
+            e.deltaY > 0 ? this.next() : this.prev();
+            setTimeout(() => lock = false, 800);
+        }, {passive:true});
+    }
+    setupButtons() {
+        document.getElementById('nextBtn').addEventListener('click', () => this.next());
+        document.getElementById('prevBtn').addEventListener('click', () => this.prev());
+    }
+    next() { this.showSlide(this.currentSlide + 1); }
+    prev() { this.showSlide(this.currentSlide - 1); }
+    showSlide(index) {
+        this.currentSlide = Math.max(0, Math.min(index, this.slides.length - 1));
+        this.slides.forEach((slide, i) => {
+            slide.classList.toggle('active', i === this.currentSlide);
+            slide.classList.toggle('visible', i === this.currentSlide);
+        });
+        const pct = ((this.currentSlide + 1) / this.slides.length) * 100;
+        this.progressBar.style.width = pct + '%';
+        this.pageCount.textContent = `${this.currentSlide + 1} / ${this.slides.length}`;
+    }
+}
+
+/* ===========================================
+   INLINE EDITOR (hover top-left or press E)
+   =========================================== */
+class InlineEditor {
+    constructor() {
+        this.isActive = false;
+        this.editables = document.querySelectorAll('h1,h2,h3,h4,p,li,td,th,.cover-meta,.stat-label,.pf,.pt,.vlead,.btag,.flow-note,.protip,.faq .a,.res-tx h4,.res-tx p,.close-lead,.close-foot,.trend-title');
+    }
+    get active() { return this.isActive; }
+    toggleEditMode() {
+        this.isActive = !this.isActive;
+        const btn = document.getElementById('editToggle');
+        btn.classList.toggle('active', this.isActive);
+        this.editables.forEach(el => {
+            el.setAttribute('contenteditable', this.isActive);
+            el.style.outline = this.isActive ? '1px dashed rgba(212,175,106,0.5)' : 'none';
+        });
+        if (this.isActive) {
+            try { localStorage.setItem('claude-legal-deck-edit', 'on'); } catch(e){}
+        }
+    }
+}
+
+const deck = new SlidePresentation();
+const editor = new InlineEditor();
+
+/* edit toggle wiring */
+const hotzone = document.querySelector('.edit-hotzone');
+const editToggle = document.getElementById('editToggle');
+let hideTimeout = null;
+hotzone.addEventListener('mouseenter', () => { clearTimeout(hideTimeout); editToggle.classList.add('show'); });
+hotzone.addEventListener('mouseleave', () => { hideTimeout = setTimeout(() => { if (!editor.isActive) editToggle.classList.remove('show'); }, 400); });
+editToggle.addEventListener('mouseenter', () => clearTimeout(hideTimeout));
+editToggle.addEventListener('mouseleave', () => { hideTimeout = setTimeout(() => { if (!editor.isActive) editToggle.classList.remove('show'); }, 400); });
+editToggle.addEventListener('click', () => editor.toggleEditMode());
+hotzone.addEventListener('click', () => editor.toggleEditMode());
+document.addEventListener('keydown', (e) => {
+    if ((e.key === 'e' || e.key === 'E') && !e.target.getAttribute('contenteditable')) editor.toggleEditMode();
+});
+</script>
+</body>
+</html>
