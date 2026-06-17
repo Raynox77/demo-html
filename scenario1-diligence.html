@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>律豆投资管理智能体 · 场景一 投前尽职调查</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@500;600;700&family=Noto+Sans+SC:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+html,body{width:100%;height:100%;margin:0;overflow:hidden;background:var(--stage-bg,#0c1f33)}
+.deck-viewport{position:fixed;inset:0;overflow:hidden;background:var(--stage-bg,#0c1f33)}
+.deck-stage{position:absolute;left:0;top:0;width:1920px;height:1080px;overflow:hidden;transform-origin:0 0;background:var(--slide-bg,#f5f7fa)}
+.slide{position:absolute;inset:0;width:1920px;height:1080px;overflow:hidden;display:block;visibility:hidden;opacity:0;pointer-events:none;background:var(--slide-bg,#f5f7fa)}
+.slide.active,.slide.visible{visibility:visible;opacity:1;pointer-events:auto;z-index:1}
+img,video,canvas,svg{max-width:100%;max-height:100%}
+.deck-controls{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:1000}
+@media print{html,body{width:1920px;height:auto;overflow:visible;background:#fff}.deck-viewport{position:static;overflow:visible;background:#fff}.deck-stage{position:static;width:auto;height:auto;transform:none!important;background:none}.slide{position:relative;display:block!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important;width:1920px;height:1080px;break-after:page;page-break-after:always}.slide:last-child{break-after:auto;page-break-after:auto}.deck-controls,.dots{display:none!important}}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.2s!important}}
+:root{
+  --navy:#1f3a5f; --navy-2:#2e5a88; --navy-deep:#13283f;
+  --brick:#c0392b; --brick-soft:#e8554420;
+  --green:#1e6b3a; --green-soft:#e7f3ec;
+  --gold:#b8893a;
+  --paper:#f5f7fa; --paper-2:#eef1f6; --card:#ffffff;
+  --ink:#1c2b3a; --ink-2:#4a5a6e; --ink-3:#8696a8;
+  --line:#d8e0ea; --line-2:#c2cdda;
+  --font-serif:'Noto Serif SC',serif; --font-sans:'Noto Sans SC',sans-serif;
+  --stage-bg:#0c1f33; --slide-bg:#f5f7fa;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+.slide{font-family:var(--font-sans);color:var(--ink)}
+.slide{background:radial-gradient(1200px 700px at 88% -10%,rgba(46,90,136,.06),transparent 60%),radial-gradient(900px 600px at -5% 110%,rgba(192,57,43,.05),transparent 55%),var(--paper);}
+.pad{position:absolute;inset:0;padding:88px 110px}
+.kicker{display:inline-flex;align-items:center;gap:12px;font-size:17px;letter-spacing:.14em;color:var(--navy-2);font-weight:700}
+.kicker .bar{width:38px;height:3px;background:var(--brick);border-radius:2px}
+.kicker .tag{font-size:14px;letter-spacing:.1em;color:#fff;background:var(--brick);padding:3px 11px;border-radius:4px;font-weight:700}
+.s-title{font-family:var(--font-serif);font-weight:700;color:var(--navy);line-height:1.12}
+.foot{position:absolute;left:110px;bottom:44px;font-size:15px;color:var(--ink-3);letter-spacing:.04em}
+.foot b{color:var(--navy-2)}
+.pageno{position:absolute;right:110px;bottom:44px;font-size:15px;color:var(--ink-3);font-variant-numeric:tabular-nums}
+.reveal{opacity:0;transform:translateY(26px);transition:opacity .7s cubic-bezier(.2,.7,.2,1),transform .7s cubic-bezier(.2,.7,.2,1)}
+.slide.active .reveal{opacity:1;transform:none}
+.slide.active .reveal.d1{transition-delay:.12s}.slide.active .reveal.d2{transition-delay:.24s}.slide.active .reveal.d3{transition-delay:.36s}.slide.active .reveal.d4{transition-delay:.48s}.slide.active .reveal.d5{transition-delay:.6s}.slide.active .reveal.d6{transition-delay:.72s}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:0 10px 34px -18px rgba(31,58,95,.32)}
+.em{color:var(--brick);font-weight:700}
+
+/* S1 COVER */
+#s1{background:radial-gradient(1400px 900px at 78% 20%,rgba(46,90,136,.5),transparent 60%),linear-gradient(135deg,#13283f 0%,#1f3a5f 55%,#244873 100%);}
+#s1 .pad{padding:0 130px;display:flex;flex-direction:column;justify-content:center}
+#s1 .badge{display:inline-flex;align-items:center;gap:14px;font-size:18px;letter-spacing:.12em;color:#bcd0e8;border:1px solid rgba(188,208,232,.35);border-radius:999px;padding:11px 24px;width:max-content}
+#s1 .badge .dot{width:9px;height:9px;border-radius:50%;background:var(--green);box-shadow:0 0 14px var(--green)}
+#s1 h1{font-family:var(--font-serif);font-weight:700;color:#fff;font-size:88px;line-height:1.12;margin-top:40px;letter-spacing:.01em}
+#s1 h1 .hl{color:#7fe0a3}
+#s1 .lead{color:#cdddf0;font-size:27px;line-height:1.7;margin-top:34px;max-width:1240px}
+#s1 .lead b{color:#fff}
+#s1 .metaRow{display:flex;gap:18px;margin-top:50px;flex-wrap:wrap}
+#s1 .meta{font-size:18px;color:#d4e2f2;border:1px solid rgba(188,208,232,.3);border-radius:10px;padding:14px 22px;background:rgba(255,255,255,.05)}
+#s1 .meta b{color:#7fe0a3;font-weight:700}
+#s1 .sig{position:absolute;right:130px;bottom:58px;font-size:17px;color:#8fabce;letter-spacing:.06em;text-align:right}
+
+/* S2 引子 */
+#s2 .twoCol{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:44px}
+.bigcard{padding:36px 40px}
+.bigcard .ic{font-size:16px;letter-spacing:.1em;font-weight:700;color:#fff;padding:6px 16px;border-radius:8px;width:max-content}
+.c-self .ic{background:var(--brick)}.c-pf .ic{background:var(--navy-2)}
+.bigcard h3{font-family:var(--font-serif);font-size:30px;color:var(--navy);font-weight:700;margin-top:18px;line-height:1.3}
+.bigcard p{font-size:18px;color:var(--ink-2);line-height:1.7;margin-top:14px}
+.bigcard .li{display:flex;gap:12px;align-items:baseline;font-size:17px;color:var(--ink);line-height:1.55;margin-top:14px}
+.bigcard .li .b{font-weight:900;color:var(--navy-2);flex-shrink:0}
+.c-self .li .b{color:var(--brick)}
+#s2 .punch{margin-top:42px;font-family:var(--font-serif);font-size:27px;color:var(--navy);text-align:center;line-height:1.55;border-top:1px solid var(--line);padding-top:32px}
+
+/* S3 五类尽调对象 */
+#s3 .grid5o{display:grid;grid-template-columns:repeat(5,1fr);gap:22px;margin-top:48px}
+#s3 .obj{background:#fff;border:1px solid var(--line);border-radius:16px;padding:28px 22px;box-shadow:0 10px 30px -18px rgba(31,58,95,.3);position:relative;overflow:hidden}
+#s3 .obj .top{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+#s3 .obj .no{font-family:var(--font-serif);font-size:30px;font-weight:700;color:var(--line-2)}
+#s3 .obj .cat{font-size:12px;font-weight:700;color:#fff;padding:4px 10px;border-radius:6px;letter-spacing:.05em;background:var(--navy-2)}
+#s3 .obj h4{font-size:21px;color:var(--navy);font-weight:700;line-height:1.3}
+#s3 .obj p{font-size:15px;color:var(--ink-2);line-height:1.55;margin-top:12px}
+#s3 .obj p b{color:var(--navy)}
+#s3 .obj::before{content:"";position:absolute;left:0;top:0;width:100%;height:5px;background:var(--navy-2)}
+#s3 .obj:nth-child(1)::before,#s3 .obj:nth-child(3)::before,#s3 .obj:nth-child(5)::before{background:var(--brick)}
+#s3 .legendc{display:flex;gap:40px;justify-content:center;margin-top:42px;font-size:18px;color:var(--ink-2)}
+#s3 .legendc .lg{display:flex;align-items:center;gap:10px}
+#s3 .legendc .sw{width:16px;height:16px;border-radius:4px;display:inline-block}
+
+/* S4 审查主线 flow */
+#s4 .flow{display:grid;grid-template-columns:.85fr 1.15fr;gap:46px;margin-top:42px}
+#s4 .steps{display:flex;flex-direction:column;gap:0;position:relative;padding-left:8px}
+#s4 .step{position:relative;padding:0 0 0 38px;min-height:78px}
+#s4 .step::before{content:"";position:absolute;left:8px;top:20px;bottom:-12px;width:3px;background:var(--line-2)}
+#s4 .step:last-child::before{display:none}
+#s4 .step .node{position:absolute;left:0;top:8px;width:18px;height:18px;border-radius:50%;background:#fff;border:3px solid var(--navy-2)}
+#s4 .step.hot .node{background:var(--brick);border-color:var(--brick)}
+#s4 .step .t{font-size:20px;font-weight:700;color:var(--navy)}
+#s4 .step .d{font-size:16px;color:var(--ink-2);margin-top:4px;line-height:1.5}
+#s4 .panel{padding:30px 34px}
+#s4 .panel h3{font-family:var(--font-serif);font-size:25px;color:var(--navy);font-weight:700;display:flex;align-items:center;justify-content:space-between}
+#s4 .panel .pill{font-size:14px;font-weight:700;color:#fff;background:var(--brick);padding:4px 12px;border-radius:6px;letter-spacing:.04em}
+#s4 .finds{margin-top:20px;display:flex;flex-direction:column;gap:12px}
+#s4 .find{display:flex;align-items:center;gap:16px;background:var(--paper-2);border-radius:11px;padding:14px 18px;border-left:5px solid var(--navy-2)}
+#s4 .find.red{border-left-color:var(--brick)}
+#s4 .find .lv{font-size:13px;font-weight:700;color:#fff;background:var(--navy-2);padding:4px 10px;border-radius:6px;flex-shrink:0;min-width:48px;text-align:center}
+#s4 .find.red .lv{background:var(--brick)}
+#s4 .find .txt{font-size:16px;color:var(--ink);line-height:1.45;flex:1}
+#s4 .find .txt b{color:var(--navy)}
+#s4 .find .due{font-size:14px;font-weight:700;color:var(--brick);white-space:nowrap;flex-shrink:0}
+
+/* TABLE generic (S5/S6/...) */
+.tbl{width:100%;border-collapse:separate;border-spacing:0;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 12px 38px -20px rgba(31,58,95,.4);font-size:17px}
+.tbl thead th{background:var(--navy-deep);color:#fff;font-weight:700;text-align:left;padding:17px 20px}
+.tbl tbody td{padding:15px 20px;border-bottom:1px solid var(--line);color:var(--ink-2);line-height:1.5;vertical-align:top}
+.tbl tbody tr:last-child td{border-bottom:none}
+.tbl tbody td:first-child{font-weight:700;color:var(--navy)}
+.tbl tbody tr:nth-child(even) td{background:#fafbfd}
+.tbl .due{color:var(--brick);font-weight:700;white-space:nowrap}
+.tbl tr.r1 td{background:#fbecea!important}
+
+/* S5 问题清单全景 */
+#s5 .tbl{margin-top:38px}
+#s5 .tbl tbody tr.hi td{background:#fbecea}
+#s5 .note{margin-top:30px;font-size:19px;color:var(--ink-2);line-height:1.7;border-left:4px solid var(--brick);padding-left:22px}
+#s5 .note b{color:var(--navy)}
+
+/* deep dive layout (S6/S7/S8) */
+.layout{display:grid;grid-template-columns:1.1fr .9fr;gap:42px;margin-top:38px}
+.subj .tbl{font-size:16px}
+.subj .tbl thead th{background:var(--navy-2)}
+.why{display:flex;flex-direction:column;gap:22px}
+.whycard{background:var(--brick-soft);border:1px solid #f0cfc9;border-radius:14px;padding:26px 30px;border-left:6px solid var(--brick)}
+.whycard h4{font-size:21px;color:var(--brick);font-weight:700;display:flex;align-items:center;gap:12px}
+.whycard h4 .ico{width:30px;height:30px;border-radius:8px;background:var(--brick);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:18px}
+.whycard p{font-size:17px;color:var(--ink-2);line-height:1.7;margin-top:12px}
+.whycard p b{color:var(--brick)}
+.whycard.nav{background:#eaf1f9;border-color:#c5d6ea;border-left-color:var(--navy-2)}
+.whycard.nav h4{color:var(--navy-2)}.whycard.nav h4 .ico{background:var(--navy-2)}
+.whycard.nav p b{color:var(--navy)}
+.whycard.grn{background:var(--green-soft);border-color:#bfe0cb;border-left-color:var(--green)}
+.whycard.grn h4{color:var(--green)}.whycard.grn h4 .ico{background:var(--green)}
+.whycard.grn p b{color:var(--green)}
+
+/* S9 审查时间轴 */
+#s9 .timeline{margin-top:54px;position:relative;padding:0 20px}
+#s9 .axis{position:absolute;left:6%;right:6%;top:44px;height:4px;background:linear-gradient(90deg,var(--green),var(--gold),var(--navy-2),var(--brick));border-radius:2px}
+#s9 .tnodes{display:grid;grid-template-columns:repeat(4,1fr);gap:30px;position:relative;z-index:2}
+#s9 .tn{display:flex;flex-direction:column;align-items:center;text-align:center}
+#s9 .tn .dot{width:26px;height:26px;border-radius:50%;background:#fff;border:5px solid var(--navy-2);box-shadow:0 0 0 6px rgba(46,90,136,.12)}
+#s9 .tn:nth-child(1) .dot{border-color:var(--green);box-shadow:0 0 0 6px rgba(30,107,58,.12)}
+#s9 .tn:nth-child(2) .dot{border-color:var(--gold);box-shadow:0 0 0 6px rgba(184,137,58,.14)}
+#s9 .tn:nth-child(4) .dot{border-color:var(--brick);box-shadow:0 0 0 6px rgba(192,57,43,.12)}
+#s9 .tn .when{font-size:16px;font-weight:700;color:var(--ink-3);margin-top:18px;letter-spacing:.04em}
+#s9 .tn h4{font-size:22px;color:var(--navy);font-weight:700;margin-top:8px}
+#s9 .tn p{font-size:16px;color:var(--ink-2);line-height:1.6;margin-top:12px;max-width:340px}
+#s9 .tn p b{color:var(--navy)}
+#s9 .closing{margin-top:56px;font-family:var(--font-serif);font-size:25px;color:var(--navy);text-align:center;line-height:1.55}
+#s9 .closing .em{color:var(--brick)}
+
+/* S10 before/after */
+#s10 .ba{display:grid;grid-template-columns:1fr 1fr;gap:0;margin-top:44px;border-radius:18px;overflow:hidden;box-shadow:0 16px 44px -22px rgba(31,58,95,.4)}
+#s10 .col{padding:44px 46px}
+#s10 .before{background:linear-gradient(160deg,#3a4654,#2a323d);color:#e7ecf2}
+#s10 .after{background:linear-gradient(160deg,#1e6b3a,#2a8a4d);color:#eafaf0}
+#s10 .col .lab{font-size:16px;letter-spacing:.12em;font-weight:700;opacity:.85}
+#s10 .col h3{font-family:var(--font-serif);font-size:34px;font-weight:700;margin-top:12px}
+#s10 .col .row{display:flex;gap:14px;align-items:baseline;font-size:19px;line-height:1.55;margin-top:20px}
+#s10 .col .row .ic{font-weight:900;flex-shrink:0;font-size:22px}
+#s10 .before .ic{color:#ff9b8f}#s10 .after .ic{color:#9bf0bd}
+#s10 .metric{margin-top:48px;display:flex;flex-direction:column;gap:8px}
+#s10 .metric .big{font-family:var(--font-serif);font-size:48px;font-weight:700}
+#s10 .before .metric .big{color:#fff}#s10 .after .metric .big{color:#bdf5d3}
+#s10 .metric .sub{font-size:16px;opacity:.85}
+
+/* S11 泳道对照 */
+#s11 .lanes{margin-top:42px;display:flex;flex-direction:column;gap:18px}
+#s11 .lane{display:grid;grid-template-columns:200px 1fr;gap:20px;align-items:stretch}
+#s11 .lane .lname{display:flex;align-items:center;font-size:19px;font-weight:700;color:#fff;border-radius:12px;padding:0 24px}
+#s11 .lane.mac .lname{background:var(--navy-2)}
+#s11 .lane.hum .lname{background:var(--brick)}
+#s11 .lane .seq{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+#s11 .lane .box{background:#fff;border:1px solid var(--line);border-radius:11px;padding:14px 20px;font-size:16px;color:var(--ink);box-shadow:0 8px 24px -16px rgba(31,58,95,.3);flex:1;min-width:0;line-height:1.4}
+#s11 .lane.mac .box{border-left:5px solid var(--navy-2)}
+#s11 .lane.hum .box{border-left:5px solid var(--brick);background:#fdf3f1}
+#s11 .lane .box b{color:var(--navy)}
+#s11 .lane.hum .box b{color:var(--brick)}
+#s11 .lane .arr{font-size:24px;color:var(--line-2);font-weight:900;flex-shrink:0}
+#s11 .lnote{margin-top:38px;font-size:19px;color:var(--ink-2);text-align:center;line-height:1.6}
+#s11 .lnote b{color:var(--navy)}
+
+/* S12 三交接点 */
+#s12 .gates{display:grid;grid-template-columns:repeat(3,1fr);gap:30px;margin-top:50px}
+#s12 .gate{background:#fff;border:1px solid var(--line);border-radius:18px;padding:0;overflow:hidden;box-shadow:0 14px 38px -20px rgba(31,58,95,.34)}
+#s12 .gate .gh{background:var(--brick);color:#fff;padding:20px 28px;display:flex;align-items:center;gap:14px}
+#s12 .gate .gh .n{font-family:var(--font-serif);font-size:30px;font-weight:700}
+#s12 .gate .gh .gt{font-size:21px;font-weight:700;line-height:1.25}
+#s12 .gate .gb{padding:26px 28px}
+#s12 .gate .gb .q{font-size:15px;letter-spacing:.06em;font-weight:700;color:var(--navy-2);margin-bottom:8px}
+#s12 .gate .gb p{font-size:17px;color:var(--ink-2);line-height:1.65}
+#s12 .gate .gb p b{color:var(--brick)}
+#s12 .gatenote{margin-top:42px;font-family:var(--font-serif);font-size:24px;color:var(--navy);text-align:center;line-height:1.55}
+#s12 .gatenote .em{color:var(--brick)}
+
+/* S13 六维度 */
+#s13 .grid6{display:grid;grid-template-columns:repeat(3,1fr);gap:26px;margin-top:50px}
+#s13 .dim{background:#fff;border:1px solid var(--line);border-radius:16px;padding:30px 32px;box-shadow:0 10px 30px -18px rgba(31,58,95,.3);border-top:5px solid var(--navy-2)}
+#s13 .dim:nth-child(3n-1){border-top-color:var(--brick)}#s13 .dim:nth-child(3n){border-top-color:var(--green)}
+#s13 .dim h4{font-size:22px;color:var(--navy);font-weight:700}
+#s13 .dim p{font-size:16px;color:var(--ink-2);line-height:1.65;margin-top:12px}
+#s13 .dim p b{color:var(--navy)}
+
+/* S14 收尾 */
+#s14{background:radial-gradient(1300px 900px at 75% 30%,rgba(46,90,136,.5),transparent 60%),linear-gradient(135deg,#13283f,#1f3a5f 60%,#244873)}
+#s14 .pad{display:flex;flex-direction:column;justify-content:center}
+#s14 .kicker2{color:#bcd0e8;font-size:18px;letter-spacing:.14em;font-weight:700}
+#s14 h2{font-family:var(--font-serif);color:#fff;font-size:56px;line-height:1.3;margin-top:28px}
+#s14 h2 .hl{color:#7fe0a3}
+#s14 .three{display:grid;grid-template-columns:repeat(3,1fr);gap:28px;margin-top:52px}
+#s14 .three .b{background:rgba(255,255,255,.07);border:1px solid rgba(188,208,232,.25);border-radius:16px;padding:28px 30px}
+#s14 .three .b .t{font-size:17px;letter-spacing:.1em;color:#7fe0a3;font-weight:700}
+#s14 .three .b .d{font-size:19px;color:#dceaf8;line-height:1.6;margin-top:14px}
+#s14 .disc{margin-top:50px;font-size:16px;color:#8fabce;line-height:1.7;max-width:1480px;border-top:1px solid rgba(188,208,232,.2);padding-top:24px}
+
+.deck-controls{display:flex;align-items:center;gap:16px;background:rgba(19,40,63,.82);backdrop-filter:blur(8px);padding:10px 18px;border-radius:999px;border:1px solid rgba(188,208,232,.25)}
+.deck-controls button{background:none;border:none;color:#cdddf0;font-size:20px;cursor:pointer;padding:4px 10px;border-radius:8px;transition:.2s}
+.deck-controls button:hover{background:rgba(255,255,255,.12);color:#fff}
+.deck-controls .pg{font-size:15px;color:#bcd0e8;font-variant-numeric:tabular-nums;min-width:56px;text-align:center}
+.dots{position:fixed;right:30px;top:50%;transform:translateY(-50%);z-index:1000;display:flex;flex-direction:column;gap:10px}
+.dots .dot{width:11px;height:11px;border-radius:50%;background:rgba(255,255,255,.3);border:1px solid rgba(255,255,255,.5);cursor:pointer;transition:.25s}
+.dots .dot.on{background:#7fe0a3;border-color:#7fe0a3;transform:scale(1.35)}
+</style>
+</head>
+<body>
+<div class="deck-viewport" id="viewport">
+  <div class="deck-stage" id="stage">
+
+    <!-- S1 封面 -->
+    <section class="slide active" id="s1">
+      <div class="pad">
+        <div class="badge reveal"><span class="dot"></span>律豆投资管理智能体 · 实战场景案例</div>
+        <h1 class="reveal d1">场景一 · 投前<br><span class="hl">投资尽职调查</span></h1>
+        <div class="lead reveal d2">尽调是投资决策的事实基础，也是法律事务里<b>最耗人力、最易遗漏、又最高频</b>的环节。本场景跟着<b>一次真实的数据室尽调</b>走一遍：智能体把整个数据室批量审查接过来，输出<b>分级问题清单与交易团队简报</b>，法务与律师专注复核与定夺。</div>
+        <div class="metaRow reveal d3">
+          <div class="meta">业务时点：<b>投前 · 投资决策前</b></div>
+          <div class="meta">价值杠杆：<b>批量 × 高耗时 → 效率</b></div>
+          <div class="meta">能力底座：<b>威科法规库 + 天眼查数据</b></div>
+        </div>
+        <div class="sig reveal d4">实战场景案例方法论 · 投前篇<br>上海智书企飞 · 律豆投资管理智能体</div>
+      </div>
+    </section>
+
+    <!-- S2 引子 -->
+    <section class="slide" id="s2">
+      <div class="pad">
+        <div class="kicker reveal"><span class="bar"></span>写在前面<span class="tag">为什么尽调最痛</span></div>
+        <div class="s-title reveal d1" style="font-size:46px;margin-top:22px">尽调的本质，是在交易窗口内把"数据室"翻完、翻准</div>
+        <div class="twoCol">
+          <div class="card bigcard c-self reveal d2">
+            <div class="ic">难点一 · 量大耗时</div>
+            <h3>一个数据室动辄数百上千份文件</h3>
+            <p>公司章程、历次融资协议、重大合同、劳动用工、知识产权、诉讼仲裁——作为领投方须主导完整尽调，文件量大、责任重。</p>
+            <div class="li"><span class="b">▶</span><span>初级律师逐份人工翻阅，<b style="color:var(--brick)">耗时、易疲劳、成本高</b>。</span></div>
+            <div class="li"><span class="b">▶</span><span>交易窗口有限，审查节奏直接影响能否按期决策。</span></div>
+          </div>
+          <div class="card bigcard c-pf reveal d3">
+            <div class="ic">难点二 · 易漏口径乱</div>
+            <h3>问题清单口径不统一、结论与原文脱节</h3>
+            <p>不同人审同一批文件，重要性判断不一致；问题清单散落各处，复核质询时反复回翻原文。</p>
+            <div class="li"><span class="b">▶</span><span>遗漏一个<b style="color:var(--navy-2)">重大或有负债 / 权属瑕疵</b>，可能直接改变估值与交易结构。</span></div>
+            <div class="li"><span class="b">▶</span><span>结论无出处，投委会一问就卡，决策没法快。</span></div>
+          </div>
+        </div>
+        <div class="punch reveal d4">智能体不替代专业判断，而是把<span class="em">"太多、太杂、太容易漏"</span>的数据室批量审查接过来——汇成一张分级、到条款、可回溯原文的问题清单。</div>
+      </div>
+      <div class="foot">律豆投资管理智能体 · 场景一 投前尽职调查</div>
+      <div class="pageno">02 / 14</div>
+    </section>
+
+    <!-- S3 五类尽调对象 -->
+    <section class="slide" id="s3">
+      <div class="pad">
+        <div class="kicker reveal"><span class="bar"></span>尽调审什么<span class="tag">五类审查对象</span></div>
+        <div class="s-title reveal d1" style="font-size:46px;margin-top:22px">把"法律尽调"拆成五类可批量审查的对象</div>
+        <div class="grid5o">
+          <div class="obj reveal d2"><div class="top"><span class="no">01</span><span class="cat">主体</span></div><h4>公司主体与股权</h4><p>设立沿革、<b>股权结构、历次增资、股东资质</b>、特殊权利安排是否清晰。</p></div>
+          <div class="obj reveal d2"><div class="top"><span class="no">02</span><span class="cat">合同</span></div><h4>重大合同义务</h4><p>重大客户/供应商合同、对外担保、<b>控制权变更条款</b>、关联交易。</p></div>
+          <div class="obj reveal d3"><div class="top"><span class="no">03</span><span class="cat">知产</span></div><h4>知识产权权属</h4><p>核心专利/商标/著作权<b>权属是否清晰</b>、是否存在职务发明或权属瑕疵。</p></div>
+          <div class="obj reveal d3"><div class="top"><span class="no">04</span><span class="cat">合规</span></div><h4>劳动与合规</h4><p>社保公积金、股权激励、用工合规，<b>资质许可、行政处罚</b>记录。</p></div>
+          <div class="obj reveal d4"><div class="top"><span class="no">05</span><span class="cat">诉讼</span></div><h4>诉讼与或有负债</h4><p>未决诉讼仲裁、被执行、失信记录，<b>重大或有负债</b>的暴露程度。</p></div>
+        </div>
+        <div class="legendc reveal d5">
+          <div class="lg"><span class="sw" style="background:var(--brick)"></span>权属 / 资格类 · 直接影响交易能否成立</div>
+          <div class="lg"><span class="sw" style="background:var(--navy-2)"></span>义务 / 风险类 · 影响估值与交易结构</div>
+        </div>
+      </div>
+      <div class="foot">五类审查对象，对应一套<b>批量审查 + 分级问题清单</b>的统一打法</div>
+      <div class="pageno">03 / 14</div>
+    </section>
+
+    <!-- S4 审查主线 -->
+    <section class="slide" id="s4">
+      <div class="pad">
+        <div class="kicker reveal"><span class="bar"></span>一、审查主线<span class="tag">数据室开放后</span></div>
+        <div class="s-title reveal d1" style="font-size:46px;margin-top:22px">跟着一次数据室尽调走一遍</div>
+        <div class="flow">
+          <div class="steps reveal d2">
+            <div class="step hot"><span class="node"></span><div class="t">批量导入</div><div class="d">数据室上百份文件一次导入，自动归类</div></div>
+            <div class="step hot"><span class="node"></span><div class="t">按对象审查</div><div class="d">五类对象逐类批量审查、提取问题</div></div>
+            <div class="step"><span class="node"></span><div class="t">外部数据交叉</div><div class="d">天眼查核验工商/诉讼，威科核法规依据</div></div>
+            <div class="step"><span class="node"></span><div class="t">分级标注</div><div class="d">按重要性阈值给每条问题定级、标出处</div></div>
+            <div class="step hot"><span class="node"></span><div class="t">审查产出</div><div class="d">一张分级问题清单 + 一份交易团队简报</div></div>
+          </div>
+          <div class="card panel reveal d3">
+            <h3>本次尽调顶出来的问题 <span class="pill">按重要性排序</span></h3>
+            <div class="finds">
+              <div class="find red"><span class="lv">高</span><span class="txt"><b>核心专利权属存疑</b>——2 项主张专利系创始人入职前申请，未办权属转移</span><span class="due">交易前必清</span></div>
+              <div class="find red"><span class="lv">高</span><span class="txt"><b>对外担保未披露</b>——为关联方约 3000 万借款提供连带担保</span><span class="due">重大或有</span></div>
+              <div class="find"><span class="lv">中</span><span class="txt"><b>重大客户合同含控制权变更条款</b>——本轮投资可能触发对方解约权</span><span class="due">需豁免</span></div>
+              <div class="find"><span class="lv">中</span><span class="txt"><b>历史股权代持</b>——一名早期股东存在代持，未完全还原</span><span class="due">需还原</span></div>
+              <div class="find"><span class="lv">关注</span><span class="txt"><b>社保公积金缴纳基数偏低</b>——存在补缴敞口（金额待核）</span><span class="due">持续核查</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="foot">几小时出问题清单，数天的体力审查变成一两天的<b>判断活</b></div>
+      <div class="pageno">04 / 14</div>
+    </section>
+
+    <!-- S5 问题清单全景表 -->
+    <section class="slide" id="s5">
+      <div class="pad">
+        <div class="kicker reveal"><span class="bar"></span>一、审查产出<span class="tag">分级问题清单</span></div>
+        <div class="s-title reveal d1" style="font-size:46px;margin-top:22px">智能体顶出来的问题，如何排进交易决策</div>
+        <table class="tbl reveal d2">
+          <thead><tr><th style="width:24%">发现的问题</th><th style="width:24%">为什么要紧</th><th style="width:14%">重要性</th><th>落地的处置安排</th></tr></thead>
+          <tbody>
+            <tr class="hi"><td>核心专利权属存疑（2 项）</td><td>权属不清直接影响标的核心价值与交易能否成立</td><td class="due">高</td><td>交割前要求完成权属转移登记，列为交割先决条件，法务复核</td></tr>
+            <tr class="hi"><td>对外担保未披露（约 3000 万）</td><td>重大或有负债，可能改变估值与交易结构</td><td class="due">高</td><td>要求披露并解除 / 调整，纳入陈述保证与赔偿条款</td></tr>
+            <tr><td>重大客户合同含控制权变更条款</td><td>本轮投资可能触发对方解约权，影响营收稳定性</td><td class="due">中</td><td>投资经理推动取得对方豁免函，法务评估替代方案</td></tr>
+            <tr><td>历史股权代持未完全还原</td><td>潜在股权争议，影响股权清晰度</td><td class="due">中</td><td>要求交割前完成代持还原，补充确权文件</td></tr>
+            <tr><td>社保公积金缴纳基数偏低</td><td>存在补缴敞口，属常见但需量化的合规瑕疵</td><td class="due">关注</td><td>请目标公司测算敞口，纳入估值调整或特别赔偿</td></tr>
+          </tbody>
+        </table>
+        <div class="note reveal d3">李律师带着这张<b>按重要性排序、每条标到条款出处和处置建议</b>的问题清单进交易决策——既守住了"权属与或有负债"这类<b>能不能投</b>的底线，也把每个需要谈判的点提前摆上了桌面。</div>
+      </div>
+      <div class="foot">律豆投资管理智能体 · 场景一 投前尽职调查</div>
+      <div class="pageno">05 / 14</div>
+    </section>
+
+    <!-- S6 深挖一 公司主体与股权 -->
+    <section class="slide" id="s6">
+      <div class="pad">
+        <div class="kicker reveal"><span class="bar"></span>第一类 · 深挖<span class="tag">权属能不能投的底线</span></div>
+        <div class="s-title reveal d1" style="font-size:44px;margin-top:20px">公司主体与股权：把"股权是否清晰"查到底</div>
+        <div class="layout">
+          <div class="subj reveal d2">
+            <table class="tbl">
+              <thead><tr><th>审查点</th><th>智能体怎么核</th><th>本次结论</th></tr></thead>
+              <tbody>
+                <tr><td>设立沿革</td><td>章程+工商档案逐次比对</td><td>合规</td></tr>
+                <tr><td>股权结构</td><td>天眼查穿透 + 协议交叉核验</td><td class="due">代持待还原</td></tr>
+                <tr><td>历次增资</td><td>历轮融资文件估值/比例校验</td><td>合规</td></tr>
+                <tr><td>特殊权利</td><td>优先权/反稀释/拖售权梳理</td><td>需对齐本轮</td></tr>
+                <tr><td>股东资质</td><td>天眼查核存续、被执行、失信</td><td class="due">1 名股东被执行</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="why">
+            <div class="whycard reveal d3">
+              <h4><span class="ico">!</span>为什么这是底线</h4>
+              <p>股权不清晰，是投资里<b>最不能踩的雷</b>——代持、瑕疵、隐名股东一旦交割后爆发，轻则稀释权益，重则<b>动摇整笔投资的法律基础</b>。这类问题必须在交割前清干净。</p>
+            </div>
+            <div class="whycard nav reveal d4">
+              <h4><span class="ico">▢</span>外部数据是怎么帮上忙的</h4>
+              <p>智能体用<b>天眼查穿透股权链路、核验每名股东的被执行/失信记录</b>，把"文件里没写、但工商和司法层面已暴露"的风险主动顶出来——人工逐个查既慢又易漏。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="foot">机器负责<b>穿透核验、交叉比对、把瑕疵查全</b>；人负责判断与交割条件设计</div>
+      <div class="pageno">06 / 14</div>
+    </section>
+
+    <!-- S7 深挖二 重大合同义务 -->
+    <section class="slide" id="s7">
+      <div class="pad">
+        <div class="kicker reveal"><span class="bar"></span>第二类 · 深挖<span class="tag">藏在合同里的义务</span></div>
+        <div class="s-title reveal d1" style="font-size:44px;margin-top:20px">重大合同义务：揪出影响交易的"隐藏条款"</div>
+        <div class="layout">
+          <div class="subj reveal d2">
+            <table class="tbl">
+              <thead><tr><th>合同类型</th><th>重点盯什么</th><th>本次结论</th></tr></thead>
+              <tbody>
+                <tr><td>重大客户合同</td><td>控制权变更 / 解约权</td><td class="due">触发解约权</td></tr>
+                <tr><td>对外担保</td><td>是否披露、连带责任</td><td class="due">未披露 3000 万</td></tr>
+                <tr><td>关联交易</td><td>定价公允、是否持续</td><td>需补披露</td></tr>
+                <tr><td>重大供应商</td><td>排他、最低采购量</td><td>合规</td></tr>
+                <tr><td>融资类合同</td><td>交叉违约、加速到期</td><td>合规</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="why">
+            <div class="whycard reveal d3">
+              <h4><span class="ico">!</span>为什么这最容易漏</h4>
+              <p>影响交易的往往不是合同主体，而是<b>埋在条款深处的一句话</b>——"控制权变更需对方同意""为关联方担保"。人工翻几百份合同极易漏掉，而漏掉的恰恰<b>可能是改变交易结构的那一条</b>。</p>
+            </div>
+            <div class="whycard nav reveal d4">
+              <h4><span class="ico">▢</span>智能体的批量优势</h4>
+              <p>智能体把<b>控制权变更、对外担保、交叉违约</b>等高风险条款设为统一审查点，对全部合同一次扫完、逐条标注出处——该豁免的提前推进，该披露的纳入陈述保证。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="foot">机器负责<b>逐条扫出高风险条款、标到出处</b>；人负责谈判与豁免推进</div>
+      <div class="pageno">07 / 14</div>
+    </section>
+
+    <!-- S8 深挖三 知识产权权属 -->
+    <section class="slide" id="s8">
+      <div class="pad">
+        <div class="kicker reveal"><span class="bar"></span>第三类 · 深挖<span class="tag">科技投资的命门</span></div>
+        <div class="s-title reveal d1" style="font-size:44px;margin-top:20px">知识产权权属：核心资产到底归不归公司</div>
+        <div class="layout">
+          <div class="subj reveal d2">
+            <table class="tbl">
+              <thead><tr><th>审查点</th><th>智能体怎么核</th><th>本次结论</th></tr></thead>
+              <tbody>
+                <tr><td>专利权属</td><td>申请人/发明人 vs 入职时间</td><td class="due">2 项存疑</td></tr>
+                <tr><td>职务发明</td><td>劳动合同+IP 归属约定核验</td><td>需补协议</td></tr>
+                <tr><td>商标著作权</td><td>权属登记一致性核验</td><td>合规</td></tr>
+                <tr><td>委托开发</td><td>外包合同权属归属条款</td><td>合规</td></tr>
+                <tr><td>开源合规</td><td>核心代码许可证义务排查</td><td>需进一步核</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="why">
+            <div class="whycard grn reveal d3">
+              <h4><span class="ico">!</span>为什么科技投资必查</h4>
+              <p>对科技 / 硬科技标的，<b>核心专利就是估值本身</b>。若主张专利实为创始人入职前个人申请、未办权属转移，公司"拥有"的核心资产可能<b>名不副实</b>——直接影响投资逻辑。</p>
+            </div>
+            <div class="whycard nav reveal d4">
+              <h4><span class="ico">▢</span>权属链路怎么拉直</h4>
+              <p>智能体把<b>专利申请日、发明人、与创始人入职时间</b>逐项比对，配合威科法规库核职务发明归属规则，把"看着是公司的、实际权属断点"的资产精准标出来。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="foot">机器负责<b>拉直权属链路、比对时间线</b>；人负责判断价值影响与交割条件</div>
+      <div class="pageno">08 / 14</div>
+    </section>
+
+    <!-- S9 审查时间轴 -->
+    <section class="slide" id="s9">
+      <div class="pad">
+        <div class="kicker reveal"><span class="bar"></span>节奏视角<span class="tag">尽调四个阶段</span></div>
+        <div class="s-title reveal d1" style="font-size:46px;margin-top:22px">从数据室开放到交易决策，智能体怎么贴着节奏走</div>
+        <div class="timeline">
+          <div class="axis reveal d2"></div>
+          <div class="tnodes">
+            <div class="tn reveal d2"><div class="dot"></div><div class="when">第 1 天 · 数据室开放</div><h4>批量导入归类</h4><p>上百份文件一次导入，按<b>五类对象自动归类</b>，几分钟出文件清单与缺漏提示。</p></div>
+            <div class="tn reveal d3"><div class="dot"></div><div class="when">第 1–2 天 · 批量审查</div><h4>逐类提取问题</h4><p>按重要性阈值<b>批量提取问题、交叉外部数据</b>，初版分级清单当天成型。</p></div>
+            <div class="tn reveal d4"><div class="dot"></div><div class="when">第 2–3 天 · 人工复核</div><h4>律师定夺分级</h4><p>律师复核智能体分级，<b>调整重要性、补充判断</b>，确认每条处置安排。</p></div>
+            <div class="tn reveal d5"><div class="dot"></div><div class="when">决策前 · 上会</div><h4>简报上交易决策</h4><p>输出<b>交易团队简报 + 投委会摘要</b>，每条结论可回溯原文，决策有据。</p></div>
+          </div>
+        </div>
+        <div class="closing reveal d6">同一份底稿，<span class="em">数天的体力审查压缩到小时级</span>——把时间还给真正需要判断与谈判的环节。</div>
+      </div>
+      <div class="foot">律豆投资管理智能体 · 场景一 投前尽职调查</div>
+      <div class="pageno">09 / 14</div>
+    </section>
+
+    <!-- S10 before/after -->
+    <section class="slide" id="s10">
+      <div class="pad">
+        <div class="kicker reveal"><span class="bar"></span>价值对照<span class="tag">同一个数据室，两种做法</span></div>
+        <div class="s-title reveal d1" style="font-size:46px;margin-top:22px">智能体介入前后，尽调发生了什么变化</div>
+        <div class="ba">
+          <div class="col before reveal d2">
+            <div class="lab">介入前 · 传统人工尽调</div>
+            <h3>体力活压在有限人力上</h3>
+            <div class="row"><span class="ic">×</span><span>初级律师逐份翻阅，数天高强度审查</span></div>
+            <div class="row"><span class="ic">×</span><span>问题清单口径因人而异，遗漏风险高</span></div>
+            <div class="row"><span class="ic">×</span><span>结论与原文脱节，复核质询反复回翻</span></div>
+            <div class="row"><span class="ic">×</span><span>外部工商/诉讼数据靠人工逐个查</span></div>
+            <div class="metric"><div class="big">数天</div><div class="sub">完成一轮全数据室审查</div></div>
+          </div>
+          <div class="col after reveal d3">
+            <div class="lab">介入后 · 智能体打底 + 人复核</div>
+            <h3>判断活留给专业的人</h3>
+            <div class="row"><span class="ic">✓</span><span>数据室一次导入，批量审查、分级提取</span></div>
+            <div class="row"><span class="ic">✓</span><span>按统一阈值分级，口径一致、漏得少</span></div>
+            <div class="row"><span class="ic">✓</span><span>每条结论标到条款出处，一键回溯</span></div>
+            <div class="row"><span class="ic">✓</span><span>天眼查/威科自动交叉，风险主动呈现</span></div>
+            <div class="metric"><div class="big">小时级</div><div class="sub">出初版分级问题清单</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="foot">变的是<b>效率与一致性</b>，不变的是<b>专业判断仍由律师作出</b></div>
+      <div class="pageno">10 / 14</div>
+    </section>
+
+    <!-- S11 泳道对照 -->
+    <section class="slide" id="s11">
+      <div class="pad">
+        <div class="kicker reveal"><span class="bar"></span>分工视角<span class="tag">机器做什么 · 人做什么</span></div>
+        <div class="s-title reveal d1" style="font-size:46px;margin-top:22px">一次尽调里，机器和人各干哪一段</div>
+        <div class="lanes">
+          <div class="lane mac reveal d2">
+            <div class="lname">机器负责</div>
+            <div class="seq">
+              <div class="box"><b>批量导入归类</b><br>上百份文件自动分到五类对象</div>
+              <span class="arr">›</span>
+              <div class="box"><b>逐条提取标注</b><br>按阈值分级、标到条款出处</div>
+              <span class="arr">›</span>
+              <div class="box"><b>外部数据交叉</b><br>天眼查核工商诉讼、威科核法规</div>
+              <span class="arr">›</span>
+              <div class="box"><b>生成两版产出</b><br>问题清单 + 交易团队简报</div>
+            </div>
+          </div>
+          <div class="lane hum reveal d3">
+            <div class="lname">人负责</div>
+            <div class="seq">
+              <div class="box"><b>设定审查标准</b><br>重要性阈值、风险姿态</div>
+              <span class="arr">›</span>
+              <div class="box"><b>复核分级结论</b><br>调整定级、补充专业判断</div>
+              <span class="arr">›</span>
+              <div class="box"><b>设计交割条件</b><br>哪些列为先决条件、怎么谈</div>
+              <span class="arr">›</span>
+              <div class="box"><b>上会与决策</b><br>向投委会汇报、作出投资判断</div>
+            </div>
+          </div>
+        </div>
+        <div class="lnote reveal d4">机器负责<b>盯得全、查得准、标得清</b>；人负责<b>判得准、定得了、担得起责任</b>——专业判断与交易决策始终在人手里。</div>
+      </div>
+      <div class="foot">律豆投资管理智能体 · 场景一 投前尽职调查</div>
+      <div class="pageno">11 / 14</div>
+    </section>
+
+    <!-- S12 人机协作 三交接点 -->
+    <section class="slide" id="s12">
+      <div class="pad">
+        <div class="kicker reveal"><span class="bar"></span>人在回路<span class="tag">三个关键交接点</span></div>
+        <div class="s-title reveal d1" style="font-size:46px;margin-top:22px">人不是甩手，而是在三个关键节点把关</div>
+        <div class="gates">
+          <div class="gate reveal d2"><div class="gh"><span class="n">①</span><span class="gt">审查前 · 定标准</span></div><div class="gb"><div class="q">交接什么</div><p>由律师 / 法务设定<b>重要性阈值、审查重点与风险姿态</b>——智能体据此判断"哪些算问题、定到几级"。标准定得准，输出才贴合机构口径。</p></div></div>
+          <div class="gate reveal d3"><div class="gh"><span class="n">②</span><span class="gt">审查中 · 复核分级</span></div><div class="gb"><div class="q">交接什么</div><p>智能体出初版分级清单后，律师<b>复核每条结论、调整重要性、补充专业判断</b>——机器顶出线索，人决定它的分量。</p></div></div>
+          <div class="gate reveal d4"><div class="gh"><span class="n">③</span><span class="gt">审查后 · 定决策</span></div><div class="gb"><div class="q">交接什么</div><p>哪些问题列为<b>交割先决条件、怎么谈判、能不能投</b>——这些重大判断由律师与投资团队作出，智能体只提供有出处的依据。</p></div></div>
+        </div>
+        <div class="gatenote reveal d5">智能体把"<span class="em">太多、太杂、太容易漏</span>"接过来，人始终守在"<span class="em">判断与决策</span>"的关口上。</div>
+      </div>
+      <div class="foot">所有输出都是工作底稿与建议，重大事项最终处置由律师 / 法务负责人复核确认后作出</div>
+      <div class="pageno">12 / 14</div>
+    </section>
+
+    <!-- S13 六维度价值 -->
+    <section class="slide" id="s13">
+      <div class="pad">
+        <div class="kicker reveal"><span class="bar"></span>价值小结<span class="tag">为什么尽调最适合做智能体试点</span></div>
+        <div class="s-title reveal d1" style="font-size:46px;margin-top:22px">投前尽调场景的六个价值维度</div>
+        <div class="grid6">
+          <div class="dim reveal d2"><h4>效率</h4><p>数据室批量审查，<b>数天体力活压缩到小时级</b>，赶得上交易窗口。</p></div>
+          <div class="dim reveal d2"><h4>一致性</h4><p>按统一阈值分级，<b>问题清单口径不再因人而异</b>，遗漏风险大幅下降。</p></div>
+          <div class="dim reveal d3"><h4>可追溯</h4><p>每条结论<b>标到条款出处</b>，投委会一问即可回溯原文，决策有据。</p></div>
+          <div class="dim reveal d3"><h4>全覆盖</h4><p>高风险条款设为统一审查点，<b>全部文件一次扫完</b>，不靠人逐份硬翻。</p></div>
+          <div class="dim reveal d4"><h4>外部增信</h4><p>天眼查 + 威科自动交叉，<b>文件没写、外部已暴露</b>的风险主动顶出。</p></div>
+          <div class="dim reveal d4"><h4>可沉淀</h4><p>审查标准沉淀为机构资产，<b>下一个项目直接复用</b>，越用越准。</p></div>
+        </div>
+      </div>
+      <div class="foot">尽调是<b>高频 + 高耗时 + AI 强杠杆</b>的交叉点，最适合作为智能体落地的第一站</div>
+      <div class="pageno">13 / 14</div>
+    </section>
+
+    <!-- S14 收尾 -->
+    <section class="slide" id="s14">
+      <div class="pad">
+        <div class="kicker2 reveal">场景一 · 投前尽职调查 · 一句话</div>
+        <h2 class="reveal d1">把<span class="hl">翻数据室的体力活</span>交给智能体，<br>把<span class="hl">能不能投的判断</span>留给专业的人。</h2>
+        <div class="three">
+          <div class="b reveal d2"><div class="t">更快</div><div class="d">数据室批量审查，数天压缩到小时级，赶得上交易窗口。</div></div>
+          <div class="b reveal d3"><div class="t">更全</div><div class="d">按统一阈值分级、全部文件一次扫完，每条结论可回溯原文。</div></div>
+          <div class="b reveal d4"><div class="t">更稳</div><div class="d">权属、或有负债等"能不能投"的底线问题，提前精准顶出来。</div></div>
+        </div>
+        <div class="disc reveal d5">重要说明：律豆投资管理智能体定位为创投机构法律事务的效率与质量赋能工具，用于辅助律师与法务人员完成尽调审查、问题提取、风险标注等工作。本场景中的项目、问题与金额均为演示示例，非真实案例。所有输出均为工作底稿与建议，不构成法律意见，不替代专业人员的独立判断；涉及估值、交易结构、能否投资等重大事项的最终决定，仍应由执业律师及投资决策机构复核确认后作出。</div>
+      </div>
+    </section>
+
+  </div>
+</div>
+<div class="dots" id="dots"></div>
+<div class="deck-controls"><button id="prev">‹</button><span class="pg" id="pg">1 / 14</span><button id="next">›</button></div>
+<script>
+const stage=document.getElementById('stage'),viewport=document.getElementById('viewport');
+function fit(){const s=Math.min(viewport.clientWidth/1920,viewport.clientHeight/1080);const x=(viewport.clientWidth-1920*s)/2,y=(viewport.clientHeight-1080*s)/2;stage.style.transform=`translate(${x}px,${y}px) scale(${s})`;}
+window.addEventListener('resize',fit);fit();
+const slides=[...document.querySelectorAll('.slide')];let cur=0;
+const dotsBox=document.getElementById('dots');
+slides.forEach((_,i)=>{const d=document.createElement('div');d.className='dot'+(i===0?' on':'');d.onclick=()=>go(i);dotsBox.appendChild(d);});
+const dots=[...dotsBox.children];
+function go(i){i=Math.max(0,Math.min(slides.length-1,i));slides[cur].classList.remove('active');dots[cur].classList.remove('on');cur=i;slides[cur].classList.add('active');dots[cur].classList.add('on');document.getElementById('pg').textContent=(i+1)+' / '+slides.length;}
+document.getElementById('next').onclick=()=>go(cur+1);
+document.getElementById('prev').onclick=()=>go(cur-1);
+window.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' '){e.preventDefault();go(cur+1);}if(e.key==='ArrowLeft')go(cur-1);});
+</script>
+</body>
+</html>
