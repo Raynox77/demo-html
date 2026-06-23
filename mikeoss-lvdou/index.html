@@ -1,0 +1,1536 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MikeOSS 对律豆智能体的可迁移启发</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&family=Noto+Serif+SC:wght@700;900&display=swap" rel="stylesheet">
+  <style>
+    /************************************************************
+     * Viewport Base
+     * Fixed 1920 x 1080 presentation stage, scaled as one unit.
+     ************************************************************/
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #181713;
+      color: #241f1a;
+      font-family: "Noto Sans SC", sans-serif;
+    }
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #deck {
+      position: relative;
+      width: 1920px;
+      height: 1080px;
+      flex: 0 0 1920px;
+      overflow: hidden;
+      transform-origin: center center;
+      background: #f7f1e7;
+      box-shadow: 0 34px 90px rgba(0, 0, 0, .42);
+    }
+    .slide {
+      position: absolute;
+      inset: 0;
+      width: 1920px;
+      height: 1080px;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateX(34px);
+      transition: opacity .34s ease, transform .34s ease;
+      background:
+        radial-gradient(circle at 14% 12%, rgba(218, 194, 139, .2), transparent 30%),
+        linear-gradient(135deg, #fbf6ed 0%, #f2eadc 100%);
+    }
+    .slide.active {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateX(0);
+    }
+    .slide.visible .rise {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .rise {
+      opacity: 0;
+      transform: translateY(18px);
+      transition: opacity .62s ease, transform .62s ease;
+    }
+    .d1 { transition-delay: .08s; }
+    .d2 { transition-delay: .18s; }
+    .d3 { transition-delay: .28s; }
+    .d4 { transition-delay: .38s; }
+    .d5 { transition-delay: .48s; }
+    .slide-inner {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      padding: 70px 82px 54px;
+    }
+
+    /************************************************************
+     * Global Deck Chrome
+     ************************************************************/
+    .deck-mark {
+      position: absolute;
+      top: 34px;
+      left: 82px;
+      display: flex;
+      gap: 14px;
+      align-items: center;
+      color: #6c5e4d;
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: .02em;
+      z-index: 5;
+    }
+    .deck-mark::before {
+      content: "";
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #1b7f73;
+      box-shadow: 22px 0 0 #ce8b2c, 44px 0 0 #9d3b35;
+      margin-right: 42px;
+    }
+    .page-no {
+      position: absolute;
+      right: 82px;
+      bottom: 42px;
+      font-size: 18px;
+      font-weight: 800;
+      color: #8b7d6a;
+      z-index: 5;
+    }
+    .footer-note {
+      position: absolute;
+      left: 82px;
+      right: 170px;
+      bottom: 38px;
+      color: #847460;
+      font-size: 18px;
+      line-height: 1.45;
+      z-index: 5;
+    }
+    .source-tag {
+      display: inline-flex;
+      align-items: center;
+      height: 32px;
+      padding: 0 12px;
+      border: 1px solid rgba(36, 31, 26, .12);
+      border-radius: 6px;
+      background: rgba(255, 255, 255, .74);
+      color: #5f5346;
+      font-size: 15px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    /************************************************************
+     * Consulting Slide Layout
+     ************************************************************/
+    .kicker {
+      position: absolute;
+      top: 86px;
+      left: 82px;
+      color: #1b7f73;
+      font-size: 20px;
+      font-weight: 900;
+      letter-spacing: .09em;
+      text-transform: uppercase;
+    }
+    .action-title {
+      margin: 42px 0 28px;
+      max-width: 1350px;
+      font-family: "Noto Serif SC", serif;
+      font-size: 58px;
+      line-height: 1.13;
+      font-weight: 900;
+      letter-spacing: 0;
+      color: #241f1a;
+    }
+    .action-title.wide { max-width: 1580px; }
+    .action-title.compact { max-width: 1120px; font-size: 54px; }
+    .subtitle {
+      max-width: 1180px;
+      margin-top: -8px;
+      color: #5f5346;
+      font-size: 28px;
+      line-height: 1.5;
+      font-weight: 500;
+    }
+    .content-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 410px;
+      gap: 34px;
+      height: 730px;
+      margin-top: 28px;
+    }
+    .content-grid.equal {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    }
+    .exhibit {
+      position: relative;
+      min-width: 0;
+      min-height: 0;
+      border: 1px solid rgba(36, 31, 26, .12);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, .62);
+      box-shadow: 0 18px 50px rgba(54, 42, 28, .10);
+      overflow: hidden;
+    }
+    .exhibit.pad { padding: 30px; }
+    .insight-panel {
+      border-radius: 8px;
+      border: 1px solid rgba(36, 31, 26, .12);
+      background: #fffaf1;
+      padding: 30px;
+      box-shadow: inset 7px 0 0 #1b7f73, 0 18px 50px rgba(54, 42, 28, .08);
+    }
+    .insight-eyebrow {
+      color: #1b7f73;
+      font-size: 18px;
+      font-weight: 900;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      margin-bottom: 18px;
+    }
+    .insight-main {
+      color: #241f1a;
+      font-size: 32px;
+      line-height: 1.35;
+      font-weight: 900;
+      margin-bottom: 24px;
+    }
+    .insight-text {
+      color: #5b5044;
+      font-size: 23px;
+      line-height: 1.58;
+      font-weight: 500;
+    }
+    .insight-list {
+      display: grid;
+      gap: 14px;
+      margin-top: 24px;
+    }
+    .insight-item {
+      display: grid;
+      grid-template-columns: 30px 1fr;
+      gap: 12px;
+      align-items: start;
+      color: #493f36;
+      font-size: 21px;
+      line-height: 1.45;
+      font-weight: 700;
+    }
+    .insight-item::before {
+      content: "";
+      width: 14px;
+      height: 14px;
+      margin-top: 8px;
+      border-radius: 50%;
+      background: #ce8b2c;
+    }
+
+    /************************************************************
+     * Screenshot Materials
+     ************************************************************/
+    .screenshot-wrap {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background: #ffffff;
+    }
+    .screenshot-wrap.soft { background: #fbf7ef; }
+    .screenshot {
+      max-width: 100%;
+      max-height: 100%;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      border-radius: 6px;
+      border: 1px solid rgba(36, 31, 26, .1);
+      background: #fff;
+    }
+    .screenshot.cover {
+      object-fit: cover;
+      object-position: center top;
+    }
+    .material-caption {
+      position: absolute;
+      left: 24px;
+      bottom: 24px;
+      z-index: 4;
+    }
+    .callout {
+      position: absolute;
+      display: grid;
+      grid-template-columns: 32px 1fr;
+      gap: 12px;
+      align-items: start;
+      width: 280px;
+      padding: 14px 16px;
+      border-radius: 8px;
+      background: rgba(255, 250, 241, .95);
+      border: 1px solid rgba(27, 127, 115, .3);
+      box-shadow: 0 14px 34px rgba(36, 31, 26, .16);
+      color: #342d26;
+      font-size: 19px;
+      line-height: 1.38;
+      font-weight: 800;
+      z-index: 8;
+    }
+    .callout .num {
+      width: 30px;
+      height: 30px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: #1b7f73;
+      color: #fff;
+      font-size: 15px;
+      font-weight: 900;
+    }
+    .callout.amber {
+      border-color: rgba(206, 139, 44, .4);
+    }
+    .callout.amber .num {
+      background: #ce8b2c;
+    }
+    .callout.red {
+      border-color: rgba(157, 59, 53, .4);
+    }
+    .callout.red .num {
+      background: #9d3b35;
+    }
+
+    /************************************************************
+     * Decision And Evidence Components
+     ************************************************************/
+    .basis-grid {
+      display: grid;
+      grid-template-columns: 1.05fr .95fr;
+      gap: 28px;
+      height: 100%;
+    }
+    .basis-card {
+      position: relative;
+      border-radius: 8px;
+      border: 1px solid rgba(36, 31, 26, .12);
+      background: #fffaf1;
+      padding: 30px;
+      overflow: hidden;
+    }
+    .basis-card h3,
+    .compare-card h3,
+    .scenario-card h3 {
+      margin: 0 0 20px;
+      color: #241f1a;
+      font-size: 30px;
+      line-height: 1.25;
+      font-weight: 900;
+    }
+    .basis-card p,
+    .compare-card p,
+    .scenario-card p {
+      margin: 0;
+      color: #5b5044;
+      font-size: 23px;
+      line-height: 1.55;
+      font-weight: 500;
+    }
+    .big-word {
+      position: absolute;
+      right: 24px;
+      bottom: 12px;
+      color: rgba(27, 127, 115, .12);
+      font-size: 128px;
+      line-height: 1;
+      font-weight: 900;
+      letter-spacing: 0;
+    }
+    .compare {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 26px;
+      height: 100%;
+    }
+    .compare-card {
+      position: relative;
+      border-radius: 8px;
+      border: 1px solid rgba(36, 31, 26, .12);
+      background: #fffaf1;
+      padding: 34px;
+      overflow: hidden;
+    }
+    .compare-card.right {
+      box-shadow: inset 8px 0 0 #1b7f73;
+    }
+    .mini-stack {
+      display: grid;
+      gap: 16px;
+      margin-top: 34px;
+    }
+    .mini-line {
+      height: 62px;
+      border-radius: 8px;
+      border: 1px solid rgba(36, 31, 26, .1);
+      background: rgba(255, 255, 255, .74);
+      display: flex;
+      align-items: center;
+      padding: 0 22px;
+      font-size: 21px;
+      font-weight: 800;
+      color: #493f36;
+    }
+    .mini-line strong {
+      color: #1b7f73;
+      margin-right: 14px;
+      font-size: 24px;
+    }
+    .pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      margin-top: 26px;
+    }
+    .pill {
+      height: 44px;
+      padding: 0 16px;
+      display: inline-flex;
+      align-items: center;
+      border-radius: 6px;
+      background: #eef6f3;
+      color: #13645b;
+      font-size: 19px;
+      font-weight: 900;
+      border: 1px solid rgba(27, 127, 115, .16);
+    }
+    .pill.amber {
+      background: #fff0d8;
+      color: #895415;
+      border-color: rgba(206, 139, 44, .22);
+    }
+    .pill.red {
+      background: #fae8e4;
+      color: #8a302b;
+      border-color: rgba(157, 59, 53, .22);
+    }
+    .flow {
+      height: 100%;
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 18px;
+      align-items: center;
+      padding: 28px;
+    }
+    .flow-node {
+      position: relative;
+      min-height: 210px;
+      border-radius: 8px;
+      border: 1px solid rgba(36, 31, 26, .12);
+      background: #fffaf1;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      box-shadow: 0 14px 36px rgba(54, 42, 28, .08);
+    }
+    .flow-node:not(:last-child)::after {
+      content: "";
+      position: absolute;
+      right: -25px;
+      top: 50%;
+      width: 31px;
+      height: 2px;
+      background: #1b7f73;
+      transform: translateY(-50%);
+      z-index: 2;
+    }
+    .flow-node h3 {
+      margin: 0;
+      font-size: 25px;
+      line-height: 1.3;
+      font-weight: 900;
+      color: #241f1a;
+    }
+    .flow-node p {
+      margin: 20px 0 0;
+      color: #5b5044;
+      font-size: 19px;
+      line-height: 1.45;
+      font-weight: 600;
+    }
+    .flow-index {
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: #1b7f73;
+      color: white;
+      font-size: 18px;
+      font-weight: 900;
+    }
+    .evidence-chain {
+      height: 100%;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 22px;
+      align-items: stretch;
+      padding: 30px;
+    }
+    .evidence-card {
+      border-radius: 8px;
+      border: 1px solid rgba(36, 31, 26, .12);
+      background: #fffaf1;
+      padding: 28px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .evidence-card h3 {
+      margin: 0 0 18px;
+      color: #241f1a;
+      font-size: 29px;
+      line-height: 1.25;
+      font-weight: 900;
+    }
+    .evidence-card p {
+      margin: 0;
+      color: #5b5044;
+      font-size: 21px;
+      line-height: 1.48;
+      font-weight: 600;
+    }
+    .evidence-card .stamp {
+      width: fit-content;
+      padding: 8px 12px;
+      border-radius: 6px;
+      background: #eef6f3;
+      color: #13645b;
+      font-size: 16px;
+      font-weight: 900;
+    }
+    .flywheel {
+      position: relative;
+      height: 100%;
+      display: grid;
+      place-items: center;
+    }
+    .wheel-center {
+      width: 330px;
+      height: 330px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      background: #1b7f73;
+      color: #fff;
+      font-size: 38px;
+      line-height: 1.28;
+      font-weight: 900;
+      box-shadow: 0 26px 60px rgba(27, 127, 115, .25);
+      z-index: 2;
+    }
+    .wheel-item {
+      position: absolute;
+      width: 235px;
+      min-height: 102px;
+      border-radius: 8px;
+      border: 1px solid rgba(36, 31, 26, .12);
+      background: #fffaf1;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      padding: 20px;
+      color: #493f36;
+      font-size: 23px;
+      line-height: 1.32;
+      font-weight: 900;
+      box-shadow: 0 16px 40px rgba(54, 42, 28, .08);
+    }
+    .wheel-item.a { top: 56px; left: 50%; transform: translateX(-50%); }
+    .wheel-item.b { right: 86px; top: 265px; }
+    .wheel-item.c { right: 180px; bottom: 76px; }
+    .wheel-item.d { left: 180px; bottom: 76px; }
+    .wheel-item.e { left: 86px; top: 265px; }
+    .hub {
+      height: 100%;
+      display: grid;
+      place-items: center;
+      position: relative;
+    }
+    .hub-center {
+      width: 360px;
+      height: 210px;
+      border-radius: 8px;
+      background: #241f1a;
+      color: #fffaf1;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      font-size: 42px;
+      line-height: 1.22;
+      font-weight: 900;
+      box-shadow: 0 30px 70px rgba(36, 31, 26, .25);
+      z-index: 2;
+    }
+    .hub-node {
+      position: absolute;
+      width: 250px;
+      min-height: 118px;
+      border-radius: 8px;
+      background: #fffaf1;
+      border: 1px solid rgba(36, 31, 26, .12);
+      color: #493f36;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      font-size: 24px;
+      line-height: 1.35;
+      font-weight: 900;
+      padding: 20px;
+    }
+    .hub-node.n1 { top: 80px; left: 150px; }
+    .hub-node.n2 { top: 80px; right: 150px; }
+    .hub-node.n3 { bottom: 80px; left: 150px; }
+    .hub-node.n4 { bottom: 80px; right: 150px; }
+    .risk-matrix {
+      height: 100%;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      gap: 14px;
+      padding: 32px;
+      background: #fbf7ef;
+    }
+    .risk-cell {
+      border-radius: 8px;
+      border: 1px solid rgba(36, 31, 26, .1);
+      background: #fffaf1;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      color: #493f36;
+      font-size: 21px;
+      line-height: 1.35;
+      font-weight: 800;
+    }
+    .risk-cell.high {
+      background: #fae8e4;
+      color: #7c2d28;
+      border-color: rgba(157, 59, 53, .28);
+    }
+    .risk-cell.medium {
+      background: #fff0d8;
+      color: #79501a;
+      border-color: rgba(206, 139, 44, .28);
+    }
+    .risk-cell.low {
+      background: #eef6f3;
+      color: #145f57;
+      border-color: rgba(27, 127, 115, .22);
+    }
+    .risk-label {
+      font-size: 16px;
+      font-weight: 900;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      opacity: .75;
+    }
+    .gate-list {
+      height: 100%;
+      padding: 34px;
+      display: grid;
+      gap: 18px;
+      align-content: center;
+    }
+    .gate-item {
+      display: grid;
+      grid-template-columns: 68px 1fr 120px;
+      gap: 18px;
+      align-items: center;
+      min-height: 90px;
+      padding: 18px 22px;
+      border-radius: 8px;
+      border: 1px solid rgba(36, 31, 26, .12);
+      background: #fffaf1;
+      box-shadow: 0 12px 30px rgba(54, 42, 28, .06);
+    }
+    .gate-num {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: #1b7f73;
+      color: #fff;
+      font-size: 20px;
+      font-weight: 900;
+    }
+    .gate-text {
+      font-size: 24px;
+      line-height: 1.35;
+      font-weight: 900;
+      color: #241f1a;
+    }
+    .gate-status {
+      height: 40px;
+      border-radius: 6px;
+      display: grid;
+      place-items: center;
+      background: #fff0d8;
+      color: #895415;
+      font-size: 17px;
+      font-weight: 900;
+    }
+    .timeline {
+      height: 100%;
+      padding: 56px 36px;
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 16px;
+      align-items: stretch;
+    }
+    .timeline-step {
+      position: relative;
+      border-radius: 8px;
+      border: 1px solid rgba(36, 31, 26, .12);
+      background: #fffaf1;
+      padding: 28px 24px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .timeline-step:not(:last-child)::after {
+      content: "";
+      position: absolute;
+      right: -22px;
+      top: 50%;
+      width: 28px;
+      height: 2px;
+      background: #ce8b2c;
+      transform: translateY(-50%);
+      z-index: 2;
+    }
+    .timeline-step h3 {
+      margin: 0;
+      color: #241f1a;
+      font-size: 25px;
+      line-height: 1.28;
+      font-weight: 900;
+    }
+    .timeline-step p {
+      margin: 0;
+      color: #5b5044;
+      font-size: 18px;
+      line-height: 1.45;
+      font-weight: 600;
+    }
+
+    /************************************************************
+     * Cover And Navigation
+     ************************************************************/
+    .cover-grid {
+      display: grid;
+      grid-template-columns: 770px 1fr;
+      gap: 54px;
+      height: 835px;
+      margin-top: 70px;
+    }
+    .cover-title {
+      margin: 0;
+      color: #241f1a;
+      font-family: "Noto Serif SC", serif;
+      font-size: 78px;
+      line-height: 1.08;
+      font-weight: 900;
+      letter-spacing: 0;
+    }
+    .cover-subtitle {
+      margin: 34px 0 0;
+      color: #5f5346;
+      font-size: 31px;
+      line-height: 1.5;
+      font-weight: 600;
+    }
+    .cover-proof {
+      margin-top: 64px;
+      display: grid;
+      gap: 18px;
+      max-width: 620px;
+    }
+    .proof-line {
+      display: grid;
+      grid-template-columns: 42px 1fr;
+      gap: 16px;
+      align-items: center;
+      color: #493f36;
+      font-size: 24px;
+      line-height: 1.35;
+      font-weight: 800;
+    }
+    .proof-line span {
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: #1b7f73;
+      color: #fff;
+      font-size: 18px;
+      font-weight: 900;
+    }
+    .cover-shot {
+      position: relative;
+      height: 835px;
+      border-radius: 8px;
+      border: 1px solid rgba(36, 31, 26, .12);
+      overflow: hidden;
+      background: #fff;
+      box-shadow: 0 28px 72px rgba(54, 42, 28, .18);
+    }
+    .cover-shot img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: left top;
+      filter: saturate(.96) contrast(1.02);
+    }
+    .cover-badge {
+      position: absolute;
+      right: 28px;
+      bottom: 28px;
+      max-width: 340px;
+      padding: 18px 20px;
+      border-radius: 8px;
+      background: rgba(255, 250, 241, .95);
+      color: #241f1a;
+      font-size: 22px;
+      line-height: 1.35;
+      font-weight: 900;
+      border: 1px solid rgba(36, 31, 26, .12);
+    }
+    #nav {
+      position: fixed;
+      left: 50%;
+      bottom: 18px;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      z-index: 30;
+      padding: 8px;
+      border-radius: 8px;
+      background: rgba(24, 23, 19, .82);
+      backdrop-filter: blur(10px);
+    }
+    #nav button {
+      width: 40px;
+      height: 34px;
+      border: 0;
+      border-radius: 6px;
+      background: #fffaf1;
+      color: #241f1a;
+      font-size: 18px;
+      font-weight: 900;
+      cursor: pointer;
+    }
+    #nav button:disabled {
+      opacity: .45;
+      cursor: default;
+    }
+    #counter {
+      color: #fffaf1;
+      font-size: 15px;
+      font-weight: 900;
+      min-width: 72px;
+      text-align: center;
+    }
+    #editHint {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      z-index: 30;
+      color: rgba(255, 250, 241, .72);
+      font-size: 13px;
+      font-weight: 700;
+    }
+    body.editing #editHint {
+      color: #fff0d8;
+    }
+    [contenteditable="true"] {
+      outline: 2px dashed rgba(27, 127, 115, .55);
+      outline-offset: 4px;
+    }
+    @media (max-width: 760px) {
+      #nav { bottom: 10px; }
+      #editHint { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <main id="deck" aria-label="MikeOSS 对律豆智能体的可迁移启发">
+    <section class="slide active" data-title="导入">
+      <div class="slide-inner">
+        <div class="deck-mark">MIKEOSS -> LVDou</div>
+        <div class="cover-grid">
+          <div class="rise d1">
+            <h1 class="cover-title editable">这不是竞品拆解，而是把 MikeOSS 转成律豆行动方案</h1>
+            <p class="cover-subtitle editable">目标不是复刻一个开源产品，而是提炼能让律豆更像“专业事项工作台”的可迁移机制。</p>
+            <div class="cover-proof">
+              <div class="proof-line"><span>1</span><div>看它如何组织事项、材料、流程和输出</div></div>
+              <div class="proof-line"><span>2</span><div>判断哪些机制值得进入律豆智能体</div></div>
+              <div class="proof-line"><span>3</span><div>落到可演示的客户场景，而不是功能堆叠</div></div>
+            </div>
+          </div>
+          <div class="cover-shot rise d2">
+            <img src="screenshots/01-mike-home-full.png" alt="MikeOSS 首页截图">
+            <div class="cover-badge">公开页面已经露出关键结构：助手、项目、表格审查、工作流、自部署。</div>
+          </div>
+        </div>
+        <div class="footer-note">材料来源：MikeOSS 公开站点与公开 GitHub 页面截图，采集日期 2026-06-23。</div>
+        <div class="page-no">01 / 19</div>
+      </div>
+    </section>
+
+    <section class="slide" data-title="核心判断">
+      <div class="slide-inner">
+        <div class="kicker">核心判断</div>
+        <h2 class="action-title editable">MikeOSS 的启发是事项工作台，而不是页面样式</h2>
+        <div class="content-grid equal">
+          <div class="exhibit pad rise d1">
+            <div class="compare">
+              <div class="compare-card">
+                <h3>普通 AI 工具</h3>
+                <p>用户面对一组机器人或 prompt，需要自己记住材料在哪里、任务到哪一步、输出是否可复核。</p>
+                <div class="mini-stack">
+                  <div class="mini-line"><strong>01</strong>机器人入口</div>
+                  <div class="mini-line"><strong>02</strong>一次性对话</div>
+                  <div class="mini-line"><strong>03</strong>结果散落</div>
+                </div>
+                <div class="big-word">Tool</div>
+              </div>
+              <div class="compare-card right">
+                <h3>事项工作台</h3>
+                <p>用户围绕一个事项组织材料、任务链、审查表和交付物，AI 是事项推进的一部分。</p>
+                <div class="mini-stack">
+                  <div class="mini-line"><strong>01</strong>事项容器</div>
+                  <div class="mini-line"><strong>02</strong>可复用流程</div>
+                  <div class="mini-line"><strong>03</strong>可追溯输出</div>
+                </div>
+                <div class="big-word">Matter</div>
+              </div>
+            </div>
+          </div>
+          <aside class="insight-panel rise d2">
+            <div class="insight-eyebrow">Lvdou implication</div>
+            <div class="insight-main editable">律豆要学的是“把 AI 放进事项”，不是换一套 UI。</div>
+            <div class="insight-text editable">如果只复制卡片、菜单和模型接入，律豆仍是工具箱；只有围绕事项沉淀材料、任务、证据和交付物，才会变成客户日常入口。</div>
+          </aside>
+        </div>
+        <div class="footer-note">本页只说一件事：迁移目标应是事项工作台机制。</div>
+        <div class="page-no">02 / 19</div>
+      </div>
+    </section>
+
+    <section class="slide" data-title="控制感">
+      <div class="slide-inner">
+        <div class="kicker">采用门槛</div>
+        <h2 class="action-title editable">MikeOSS 先卖可控制，法律 AI 才敢进入专业工作流</h2>
+        <div class="content-grid">
+          <div class="exhibit rise d1">
+            <div class="screenshot-wrap">
+              <img class="screenshot" src="screenshots/01-mike-home-full.png" alt="MikeOSS 首页控制感截图">
+            </div>
+            <div class="callout" style="left: 80px; top: 98px;"><span class="num">1</span><span>开源与自部署降低黑箱感</span></div>
+            <div class="callout amber" style="right: 70px; top: 120px;"><span class="num">2</span><span>工作流结构让过程可解释</span></div>
+            <div class="callout red" style="right: 92px; bottom: 120px;"><span class="num">3</span><span>多个模型与服务商减少锁定</span></div>
+            <div class="material-caption"><span class="source-tag">Screenshot: MikeOSS home</span></div>
+          </div>
+          <aside class="insight-panel rise d2">
+            <div class="insight-eyebrow">Decision point</div>
+            <div class="insight-main editable">法律场景的第一关不是“更聪明”，而是“我能管住它”。</div>
+            <div class="insight-list">
+              <div class="insight-item">数据是否在可接受边界内处理</div>
+              <div class="insight-item">模型调用是否能被解释和替换</div>
+              <div class="insight-item">输出是否能被律师复核</div>
+            </div>
+          </aside>
+        </div>
+        <div class="footer-note">本页只说一件事：控制感是法律 AI 进入专业流程的前置条件。</div>
+        <div class="page-no">03 / 19</div>
+      </div>
+    </section>
+
+    <section class="slide" data-title="Assistant">
+      <div class="slide-inner">
+        <div class="kicker">Assistant</div>
+        <h2 class="action-title editable">Assistant 证明法律 AI 可以从材料走到交付物</h2>
+        <div class="content-grid">
+          <div class="exhibit rise d1">
+            <div class="screenshot-wrap soft">
+              <img class="screenshot" src="screenshots/02-assistant-workflow-card.png" alt="Assistant workflow card">
+            </div>
+            <div class="callout" style="left: 86px; top: 95px;"><span class="num">1</span><span>从 documents 读取事实</span></div>
+            <div class="callout amber" style="left: 460px; bottom: 78px;"><span class="num">2</span><span>按 workflow 执行任务</span></div>
+            <div class="callout red" style="right: 86px; top: 118px;"><span class="num">3</span><span>产出可下载文件</span></div>
+            <div class="material-caption"><span class="source-tag">Screenshot: Assistants card</span></div>
+          </div>
+          <aside class="insight-panel rise d2">
+            <div class="insight-eyebrow">Lvdou implication</div>
+            <div class="insight-main editable">律豆智能体的展示重点应是“任务链”，不是聊天能力。</div>
+            <div class="insight-text editable">客户更关心材料如何被读入、规则如何被调用、结果如何交付。演示时要把这条链完整跑出来。</div>
+          </aside>
+        </div>
+        <div class="footer-note">本页只说一件事：Assistant 的核心价值是端到端任务链。</div>
+        <div class="page-no">04 / 19</div>
+      </div>
+    </section>
+
+    <section class="slide" data-title="Project">
+      <div class="slide-inner">
+        <div class="kicker">Project</div>
+        <h2 class="action-title editable">Project 让法律事项上下文不再散落</h2>
+        <div class="content-grid">
+          <div class="exhibit rise d1">
+            <div class="screenshot-wrap soft">
+              <img class="screenshot" src="screenshots/03-projects-matter-workspace-card.png" alt="Project matter workspace card">
+            </div>
+            <div class="callout" style="left: 80px; top: 118px;"><span class="num">1</span><span>Documents 进入同一事项</span></div>
+            <div class="callout amber" style="right: 100px; top: 132px;"><span class="num">2</span><span>Assistant 继承事项上下文</span></div>
+            <div class="callout red" style="right: 115px; bottom: 102px;"><span class="num">3</span><span>Tabular Reviews 留住判断结构</span></div>
+            <div class="material-caption"><span class="source-tag">Screenshot: Projects card</span></div>
+          </div>
+          <aside class="insight-panel rise d2">
+            <div class="insight-eyebrow">Product move</div>
+            <div class="insight-main editable">律豆要先有“事项容器”，再谈智能体市场。</div>
+            <div class="insight-text editable">合同、尽调、诉讼、合规都天然以事项为单位。事项容器可以统一材料、任务、输出和后续复盘。</div>
+          </aside>
+        </div>
+        <div class="footer-note">本页只说一件事：Project 是专业上下文的容器。</div>
+        <div class="page-no">05 / 19</div>
+      </div>
+    </section>
+
+    <section class="slide" data-title="Tabular Review">
+      <div class="slide-inner">
+        <div class="kicker">Tabular Review</div>
+        <h2 class="action-title editable">Tabular Review 的价值是让结论回到证据</h2>
+        <div class="content-grid">
+          <div class="exhibit rise d1">
+            <div class="screenshot-wrap soft">
+              <img class="screenshot" src="screenshots/04-tabular-review-card.png" alt="Tabular review card">
+            </div>
+            <div class="callout" style="left: 96px; top: 106px;"><span class="num">1</span><span>把审查维度表格化</span></div>
+            <div class="callout amber" style="right: 94px; top: 108px;"><span class="num">2</span><span>每条判断绑定原文</span></div>
+            <div class="callout red" style="right: 112px; bottom: 94px;"><span class="num">3</span><span>律师可快速抽查</span></div>
+            <div class="material-caption"><span class="source-tag">Screenshot: Tabular Reviews card</span></div>
+          </div>
+          <aside class="insight-panel rise d2">
+            <div class="insight-eyebrow">Legal fit</div>
+            <div class="insight-main editable">对律师来说，结论不是终点，证据链才是可信度。</div>
+            <div class="insight-text editable">律豆的审查结果需要默认带来源、依据、风险级别和待确认项，否则很难进入真实交付。</div>
+          </aside>
+        </div>
+        <div class="footer-note">本页只说一件事：表格审查应服务证据追溯。</div>
+        <div class="page-no">06 / 19</div>
+      </div>
+    </section>
+
+    <section class="slide" data-title="Workflow">
+      <div class="slide-inner">
+        <div class="kicker">Workflow</div>
+        <h2 class="action-title editable">Workflow 把一次性 prompt 变成团队资产</h2>
+        <div class="content-grid">
+          <div class="exhibit rise d1">
+            <div class="screenshot-wrap soft">
+              <img class="screenshot" src="screenshots/05-workflows-card.png" alt="Workflows card">
+            </div>
+            <div class="callout" style="left: 88px; top: 110px;"><span class="num">1</span><span>流程可以被保存</span></div>
+            <div class="callout amber" style="right: 90px; top: 125px;"><span class="num">2</span><span>团队可以重复调用</span></div>
+            <div class="callout red" style="right: 100px; bottom: 104px;"><span class="num">3</span><span>经验可以持续迭代</span></div>
+            <div class="material-caption"><span class="source-tag">Screenshot: Workflows card</span></div>
+          </div>
+          <aside class="insight-panel rise d2">
+            <div class="insight-eyebrow">Asset logic</div>
+            <div class="insight-main editable">律豆要把律师经验沉淀成“可调用流程”。</div>
+            <div class="insight-text editable">单次 prompt 很难形成组织资产；workflow 可以承载审查路径、输出格式、复核节点和客户偏好。</div>
+          </aside>
+        </div>
+        <div class="footer-note">本页只说一件事：workflow 是经验资产化的载体。</div>
+        <div class="page-no">07 / 19</div>
+      </div>
+    </section>
+
+    <section class="slide" data-title="治理">
+      <div class="slide-inner">
+        <div class="kicker">Governance</div>
+        <h2 class="action-title editable">自部署叙事本质上是在回答治理问题</h2>
+        <div class="content-grid">
+          <div class="exhibit rise d1">
+            <div class="screenshot-wrap soft">
+              <img class="screenshot" src="screenshots/06-open-source-self-hosting-section.png" alt="Open source and self hosting section">
+            </div>
+            <div class="material-caption"><span class="source-tag">Screenshot: Open source section</span></div>
+          </div>
+          <aside class="insight-panel rise d2">
+            <div class="insight-eyebrow">Governance answer</div>
+            <div class="insight-main editable">开源不是宣传点，而是治理谈判的起点。</div>
+            <div class="pill-row">
+              <span class="pill">权限边界</span>
+              <span class="pill amber">数据留存</span>
+              <span class="pill red">模型替换</span>
+              <span class="pill">调用审计</span>
+            </div>
+            <div class="insight-text" style="margin-top: 26px;">律豆未必采用同一路线，但必须能回答客户 IT、法务和合规部门的同类问题。</div>
+          </aside>
+        </div>
+        <div class="footer-note">本页只说一件事：自部署背后是治理可接受性。</div>
+        <div class="page-no">08 / 19</div>
+      </div>
+    </section>
+
+    <section class="slide" data-title="护城河一">
+      <div class="slide-inner">
+        <div class="kicker">Moat 01</div>
+        <h2 class="action-title editable">第一道护城河是用户把事项入口放进系统</h2>
+        <div class="content-grid">
+          <div class="exhibit pad rise d1">
+            <div class="flow">
+              <div class="flow-node"><div class="flow-index">1</div><h3>Project</h3><p>客户先建立事项，而不是先问一个问题。</p></div>
+              <div class="flow-node"><div class="flow-index">2</div><h3>Documents</h3><p>材料与事项绑定，形成可恢复上下文。</p></div>
+              <div class="flow-node"><div class="flow-index">3</div><h3>Assistant</h3><p>智能体在事项内执行任务，而不是孤立对话。</p></div>
+              <div class="flow-node"><div class="flow-index">4</div><h3>Review</h3><p>审查表保留判断维度和证据来源。</p></div>
+              <div class="flow-node"><div class="flow-index">5</div><h3>Output</h3><p>结果成为事项档案的一部分。</p></div>
+            </div>
+          </div>
+          <aside class="insight-panel rise d2">
+            <div class="insight-eyebrow">Retention logic</div>
+            <div class="insight-main editable">入口一旦变成事项，迁移成本就不再只是模型成本。</div>
+            <div class="insight-text editable">用户沉淀的材料结构、任务记录和交付结果，会自然增加继续使用的理由。</div>
+          </aside>
+        </div>
+        <div class="footer-note">本页只说一件事：事项入口会形成使用黏性。</div>
+        <div class="page-no">09 / 19</div>
+      </div>
+    </section>
+
+    <section class="slide" data-title="护城河二">
+      <div class="slide-inner">
+        <div class="kicker">Moat 02</div>
+        <h2 class="action-title editable">第二道护城河是可复用 workflow</h2>
+        <div class="content-grid">
+          <div class="exhibit pad rise d1">
+            <div class="evidence-chain">
+              <div class="evidence-card">
+                <div class="stamp">Before</div>
+                <h3>个人 prompt</h3>
+                <p>依赖个体经验，难以复用，质量波动大。</p>
+              </div>
+              <div class="evidence-card">
+                <div class="stamp">Transform</div>
+                <h3>流程模板</h3>
+                <p>把步骤、输入、输出和复核点结构化。</p>
+              </div>
+              <div class="evidence-card">
+                <div class="stamp">After</div>
+                <h3>团队资产</h3>
+                <p>可调用、可改进、可交接，沉淀组织经验。</p>
+              </div>
+            </div>
+          </div>
+          <aside class="insight-panel rise d2">
+            <div class="insight-eyebrow">Workflow value</div>
+            <div class="insight-main editable">律豆的差异化不能只靠“更多智能体”。</div>
+            <div class="insight-text editable">真正的资产是客户可复用的审查流程、交付标准和复核机制。</div>
+          </aside>
+        </div>
+        <div class="footer-note">本页只说一件事：workflow 让经验可复用。</div>
+        <div class="page-no">10 / 19</div>
+      </div>
+    </section>
+
+    <section class="slide" data-title="护城河三">
+      <div class="slide-inner">
+        <div class="kicker">Moat 03</div>
+        <h2 class="action-title editable">第三道护城河是数据复利</h2>
+        <div class="content-grid">
+          <div class="exhibit pad rise d1">
+            <div class="flywheel">
+              <div class="wheel-center">事项数据<br>复利</div>
+              <div class="wheel-item a">材料结构</div>
+              <div class="wheel-item b">证据引用</div>
+              <div class="wheel-item c">律师反馈</div>
+              <div class="wheel-item d">Playbook 更新</div>
+              <div class="wheel-item e">下次任务更准</div>
+            </div>
+          </div>
+          <aside class="insight-panel rise d2">
+            <div class="insight-eyebrow">Compounding</div>
+            <div class="insight-main editable">每次事项处理都应该反哺下一次交付。</div>
+            <div class="insight-text editable">律豆如果能把审查证据、律师修改、客户偏好沉淀回 Playbook，就会从工具变成知识系统。</div>
+          </aside>
+        </div>
+        <div class="footer-note">本页只说一件事：数据复利来自可回流的专业反馈。</div>
+        <div class="page-no">11 / 19</div>
+      </div>
+    </section>
+
+    <section class="slide" data-title="验证边界">
+      <div class="slide-inner">
+        <div class="kicker">Validation boundary</div>
+        <h2 class="action-title editable">公开页面不能替代真实产品验证</h2>
+        <div class="content-grid">
+          <div class="exhibit rise d1">
+            <div class="screenshot-wrap soft">
+              <img class="screenshot" src="screenshots/07-app-entry-public-state.png" alt="MikeOSS app entry public state">
+            </div>
+            <div class="callout red" style="right: 90px; top: 110px;"><span class="num">!</span><span>未登录状态只能看到入口，不等于已验证实际链路</span></div>
+            <div class="material-caption"><span class="source-tag">Screenshot: app entry</span></div>
+          </div>
+          <aside class="insight-panel rise d2">
+            <div class="insight-eyebrow">Risk control</div>
+            <div class="insight-main editable">现在能下结论的是产品方向，不是实现细节。</div>
+            <div class="insight-list">
+              <div class="insight-item">需要跑通真实 assistant</div>
+              <div class="insight-item">需要验证文件读写边界</div>
+              <div class="insight-item">需要看 workflow 配置成本</div>
+            </div>
+          </aside>
+        </div>
+        <div class="footer-note">本页只说一件事：公开页面证据有限，后续必须真实体验。</div>
+        <div class="page-no">12 / 19</div>
+      </div>
+    </section>
+
+    <section class="slide" data-title="律豆第一层">
+      <div class="slide-inner">
+        <div class="kicker">Lvdou layer 01</div>
+        <h2 class="action-title editable">律豆第一层应先成为事项容器</h2>
+        <div class="content-grid">
+          <div class="exhibit pad rise d1">
+            <div class="hub">
+              <div class="hub-center">法律事项<br>工作台</div>
+              <div class="hub-node n1">材料<br>合同、邮件、附件</div>
+              <div class="hub-node n2">任务<br>审查、抽取、起草</div>
+              <div class="hub-node n3">证据<br>来源、引用、待确认</div>
+              <div class="hub-node n4">交付<br>报告、清单、意见</div>
+            </div>
+          </div>
+          <aside class="insight-panel rise d2">
+            <div class="insight-eyebrow">Product structure</div>
+            <div class="insight-main editable">事项容器是所有智能体的共同底座。</div>
+            <div class="insight-text editable">不管是合同、尽调还是宣传合规，用户都需要一个能恢复上下文、承载材料和沉淀结果的空间。</div>
+          </aside>
+        </div>
+        <div class="footer-note">本页只说一件事：律豆的底层入口应是事项。</div>
+        <div class="page-no">13 / 19</div>
+      </div>
+    </section>
+
+    <section class="slide" data-title="Demo 链路">
+      <div class="slide-inner">
+        <div class="kicker">Demo design</div>
+        <h2 class="action-title editable">律豆 Demo 要只跑通一条任务链</h2>
+        <div class="content-grid">
+          <div class="exhibit pad rise d1">
+            <div class="flow">
+              <div class="flow-node"><div class="flow-index">1</div><h3>材料进入</h3><p>上传合同或资料包，形成事项上下文。</p></div>
+              <div class="flow-node"><div class="flow-index">2</div><h3>任务识别</h3><p>确认本次要做的法律工作。</p></div>
+              <div class="flow-node"><div class="flow-index">3</div><h3>Skill 调用</h3><p>调用对应审查或抽取流程。</p></div>
+              <div class="flow-node"><div class="flow-index">4</div><h3>可复核输出</h3><p>展示结论、来源、风险和待确认项。</p></div>
+              <div class="flow-node"><div class="flow-index">5</div><h3>交付物</h3><p>导出报告、清单或客户意见。</p></div>
+            </div>
+          </div>
+          <aside class="insight-panel rise d2">
+            <div class="insight-eyebrow">Demo rule</div>
+            <div class="insight-main editable">客户只需要看到一条链路真的成立。</div>
+            <div class="insight-text editable">不要在同一页同时讲几十个智能体。先证明材料进来、流程跑通、结果可复核、交付能拿走。</div>
+          </aside>
+        </div>
+        <div class="footer-note">本页只说一件事：演示要聚焦一条完整任务链。</div>
+        <div class="page-no">14 / 19</div>
+      </div>
+    </section>
+
+    <section class="slide" data-title="场景一">
+      <div class="slide-inner">
+        <div class="kicker">Scenario 01</div>
+        <h2 class="action-title editable">合同风险审查最适合作为首个演示场景</h2>
+        <div class="content-grid">
+          <div class="exhibit rise d1">
+            <div class="screenshot-wrap soft">
+              <img class="screenshot" src="screenshots/04-tabular-review-card.png" alt="Tabular review for contract risk">
+            </div>
+            <div class="callout" style="left: 88px; top: 110px;"><span class="num">1</span><span>审查项天然适合表格</span></div>
+            <div class="callout amber" style="right: 80px; top: 122px;"><span class="num">2</span><span>风险结论必须回到条款</span></div>
+            <div class="material-caption"><span class="source-tag">Reusable pattern</span></div>
+          </div>
+          <aside class="insight-panel rise d2">
+            <div class="insight-eyebrow">Why first</div>
+            <div class="insight-main editable">合同审查的输入、判断和输出都足够标准化。</div>
+            <div class="insight-text editable">它能最快证明律豆的证据链、审查表和交付能力，也最容易用真实材料验证。</div>
+          </aside>
+        </div>
+        <div class="footer-note">本页只说一件事：首个 demo 场景建议选合同风险审查。</div>
+        <div class="page-no">15 / 19</div>
+      </div>
+    </section>
+
+    <section class="slide" data-title="场景二">
+      <div class="slide-inner">
+        <div class="kicker">Scenario 02</div>
+        <h2 class="action-title editable">尽调材料初筛适合证明多文件处理</h2>
+        <div class="content-grid">
+          <div class="exhibit rise d1">
+            <div class="screenshot-wrap soft">
+              <img class="screenshot" src="screenshots/03-projects-matter-workspace-card.png" alt="Matter workspace for due diligence">
+            </div>
+            <div class="callout" style="left: 90px; top: 116px;"><span class="num">1</span><span>同一事项承载多份材料</span></div>
+            <div class="callout amber" style="right: 88px; bottom: 110px;"><span class="num">2</span><span>输出问题清单与追问项</span></div>
+            <div class="material-caption"><span class="source-tag">Reusable pattern</span></div>
+          </div>
+          <aside class="insight-panel rise d2">
+            <div class="insight-eyebrow">Why second</div>
+            <div class="insight-main editable">尽调初筛能展示“事项 + 多文件 + 问题归纳”。</div>
+            <div class="insight-text editable">它不要求一次性替代律师判断，但能清楚展示律豆如何把散落材料压成可推进的问题清单。</div>
+          </aside>
+        </div>
+        <div class="footer-note">本页只说一件事：尽调场景用于证明多文件事项能力。</div>
+        <div class="page-no">16 / 19</div>
+      </div>
+    </section>
+
+    <section class="slide" data-title="场景三">
+      <div class="slide-inner">
+        <div class="kicker">Scenario 03</div>
+        <h2 class="action-title editable">宣传材料审查适合证明合规风控价值</h2>
+        <div class="content-grid">
+          <div class="exhibit rise d1">
+            <div class="risk-matrix">
+              <div class="risk-cell low"><span class="risk-label">低风险</span><span>事实陈述有依据</span></div>
+              <div class="risk-cell medium"><span class="risk-label">中风险</span><span>效果承诺需要限定</span></div>
+              <div class="risk-cell high"><span class="risk-label">高风险</span><span>绝对化用语需删除</span></div>
+              <div class="risk-cell medium"><span class="risk-label">中风险</span><span>对比竞品需补证据</span></div>
+              <div class="risk-cell high"><span class="risk-label">高风险</span><span>合规红线触发复核</span></div>
+              <div class="risk-cell low"><span class="risk-label">低风险</span><span>免责声明位置合理</span></div>
+              <div class="risk-cell low"><span class="risk-label">低风险</span><span>术语统一</span></div>
+              <div class="risk-cell medium"><span class="risk-label">中风险</span><span>授权来源待确认</span></div>
+              <div class="risk-cell high"><span class="risk-label">高风险</span><span>敏感资质表述需核验</span></div>
+            </div>
+          </div>
+          <aside class="insight-panel rise d2">
+            <div class="insight-eyebrow">Why useful</div>
+            <div class="insight-main editable">宣传审查能让非法律业务方直接看懂价值。</div>
+            <div class="insight-text editable">它把“合规风险”转成可操作的红黄绿判断，适合售前展示和业务部门试用。</div>
+          </aside>
+        </div>
+        <div class="footer-note">本页只说一件事：宣传审查用于证明风控价值可视化。</div>
+        <div class="page-no">17 / 19</div>
+      </div>
+    </section>
+
+    <section class="slide" data-title="下一步一">
+      <div class="slide-inner">
+        <div class="kicker">Next step 01</div>
+        <h2 class="action-title editable">下一步先把 MikeOSS 跑通一次</h2>
+        <div class="content-grid">
+          <div class="exhibit rise d1">
+            <div class="gate-list">
+              <div class="gate-item"><div class="gate-num">1</div><div class="gate-text">登录并创建一个 Project</div><div class="gate-status">待验证</div></div>
+              <div class="gate-item"><div class="gate-num">2</div><div class="gate-text">上传一份可公开测试材料</div><div class="gate-status">待验证</div></div>
+              <div class="gate-item"><div class="gate-num">3</div><div class="gate-text">配置或调用一个 workflow</div><div class="gate-status">待验证</div></div>
+              <div class="gate-item"><div class="gate-num">4</div><div class="gate-text">导出可复核的结果文件</div><div class="gate-status">待验证</div></div>
+            </div>
+          </div>
+          <aside class="insight-panel rise d2">
+            <div class="insight-eyebrow">Evidence gap</div>
+            <div class="insight-main editable">只有跑通真实链路，才知道哪些机制值得迁移。</div>
+            <div class="insight-text editable">公开资料已经足够形成方向判断，但不够形成实现判断。下一步要用真实样例补证据。</div>
+          </aside>
+        </div>
+        <div class="footer-note">本页只说一件事：先做一次真实体验验证。</div>
+        <div class="page-no">18 / 19</div>
+      </div>
+    </section>
+
+    <section class="slide" data-title="下一步二">
+      <div class="slide-inner">
+        <div class="kicker">Next step 02</div>
+        <h2 class="action-title editable">再把体验结果转成律豆客户演示工作流</h2>
+        <div class="content-grid">
+          <div class="exhibit pad rise d1">
+            <div class="timeline">
+              <div class="timeline-step"><h3>体验 MikeOSS</h3><p>确认真实能力与限制。</p></div>
+              <div class="timeline-step"><h3>选择场景</h3><p>优先合同审查或尽调初筛。</p></div>
+              <div class="timeline-step"><h3>拆任务链</h3><p>明确输入、流程、复核和输出。</p></div>
+              <div class="timeline-step"><h3>跑真实材料</h3><p>用可展示材料做端到端验证。</p></div>
+              <div class="timeline-step"><h3>沉淀演示稿</h3><p>形成律豆客户 demo 版本。</p></div>
+            </div>
+          </div>
+          <aside class="insight-panel rise d2">
+            <div class="insight-eyebrow">Deliverable</div>
+            <div class="insight-main editable">这份材料的终点不是介绍 MikeOSS，而是服务律豆 demo。</div>
+            <div class="insight-text editable">下一版应从“参考产品分析”转成“律豆工作流演示脚本 + 真实样例输出”。</div>
+          </aside>
+        </div>
+        <div class="footer-note">本页只说一件事：最终交付应回到律豆客户演示。</div>
+        <div class="page-no">19 / 19</div>
+      </div>
+    </section>
+  </main>
+
+  <nav id="nav" aria-label="幻灯片导航">
+    <button id="prev" type="button" title="上一页">‹</button>
+    <span id="counter">01 / 19</span>
+    <button id="next" type="button" title="下一页">›</button>
+  </nav>
+  <div id="editHint">E 编辑文字 · ← / → 翻页</div>
+
+  <script>
+    /************************************************************
+     * Scale, navigation, URL sync, keyboard, touch, edit mode.
+     ************************************************************/
+    const deck = document.getElementById('deck');
+    const slides = Array.from(document.querySelectorAll('.slide'));
+    const counter = document.getElementById('counter');
+    const prevBtn = document.getElementById('prev');
+    const nextBtn = document.getElementById('next');
+    const STORAGE_KEY = 'mikeoss-lvdou-deck-edits-v1';
+    let current = 0;
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let wheelLock = false;
+
+    function pad(n) {
+      return String(n).padStart(2, '0');
+    }
+
+    function scaleDeck() {
+      const scale = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+      deck.style.transform = `scale(${scale})`;
+    }
+
+    function showSlide(index, push = true) {
+      current = Math.max(0, Math.min(slides.length - 1, index));
+      slides.forEach((slide, i) => {
+        slide.classList.toggle('active', i === current);
+        slide.classList.toggle('visible', i === current);
+        slide.setAttribute('aria-hidden', i === current ? 'false' : 'true');
+      });
+      counter.textContent = `${pad(current + 1)} / ${pad(slides.length)}`;
+      prevBtn.disabled = current === 0;
+      nextBtn.disabled = current === slides.length - 1;
+      if (push) {
+        const url = new URL(window.location.href);
+        url.searchParams.set('slide', current + 1);
+        window.history.replaceState(null, '', url);
+      }
+    }
+
+    function readInitialSlide() {
+      const params = new URLSearchParams(window.location.search);
+      const slide = Number(params.get('slide'));
+      if (Number.isFinite(slide) && slide > 0) return slide - 1;
+      return 0;
+    }
+
+    function toggleEditing() {
+      const editing = !document.body.classList.contains('editing');
+      document.body.classList.toggle('editing', editing);
+      document.querySelectorAll('.editable').forEach((el, index) => {
+        el.contentEditable = editing ? 'true' : 'false';
+        el.dataset.editId = el.dataset.editId || `editable-${index}`;
+      });
+      if (!editing) saveEdits();
+    }
+
+    function saveEdits() {
+      const data = {};
+      document.querySelectorAll('.editable').forEach((el, index) => {
+        const key = el.dataset.editId || `editable-${index}`;
+        data[key] = el.innerHTML;
+      });
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    }
+
+    function loadEdits() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return;
+        const data = JSON.parse(raw);
+        document.querySelectorAll('.editable').forEach((el, index) => {
+          const key = el.dataset.editId || `editable-${index}`;
+          el.dataset.editId = key;
+          if (data[key]) el.innerHTML = data[key];
+        });
+      } catch (error) {
+        console.warn('Unable to load local edits', error);
+      }
+    }
+
+    prevBtn.addEventListener('click', () => showSlide(current - 1));
+    nextBtn.addEventListener('click', () => showSlide(current + 1));
+
+    window.addEventListener('resize', scaleDeck);
+    window.addEventListener('keydown', (event) => {
+      if (event.key === 'e' || event.key === 'E') {
+        toggleEditing();
+        return;
+      }
+      if (document.body.classList.contains('editing')) return;
+      if (['ArrowRight', 'PageDown', ' '].includes(event.key)) {
+        event.preventDefault();
+        showSlide(current + 1);
+      }
+      if (['ArrowLeft', 'PageUp'].includes(event.key)) {
+        event.preventDefault();
+        showSlide(current - 1);
+      }
+      if (event.key === 'Home') showSlide(0);
+      if (event.key === 'End') showSlide(slides.length - 1);
+    });
+
+    window.addEventListener('wheel', (event) => {
+      if (wheelLock || document.body.classList.contains('editing')) return;
+      if (Math.abs(event.deltaY) < 20) return;
+      wheelLock = true;
+      showSlide(current + (event.deltaY > 0 ? 1 : -1));
+      setTimeout(() => { wheelLock = false; }, 420);
+    }, { passive: true });
+
+    window.addEventListener('touchstart', (event) => {
+      const touch = event.changedTouches[0];
+      touchStartX = touch.clientX;
+      touchStartY = touch.clientY;
+    }, { passive: true });
+
+    window.addEventListener('touchend', (event) => {
+      const touch = event.changedTouches[0];
+      const dx = touch.clientX - touchStartX;
+      const dy = touch.clientY - touchStartY;
+      if (Math.abs(dx) > 58 && Math.abs(dx) > Math.abs(dy)) {
+        showSlide(current + (dx < 0 ? 1 : -1));
+      }
+    }, { passive: true });
+
+    loadEdits();
+    scaleDeck();
+    showSlide(readInitialSlide(), false);
+  </script>
+</body>
+</html>
